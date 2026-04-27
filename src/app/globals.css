@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+* {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Hide number input spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+::selection {
+  background: rgba(201, 162, 39, 0.35);
+  color: #fff;
+}
+::-moz-selection {
+  background: rgba(201, 162, 39, 0.35);
+  color: #fff;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.25s ease; }
+
+@keyframes bid-flash {
+  0% { background-color: rgba(201,162,39,0.2); }
+  100% { background-color: transparent; }
+}
+.bid-flash { animation: bid-flash 0.6s ease; }
+
+/* Custom scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,162,39,0.15) transparent;
+}
+*::-webkit-scrollbar { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.15); border-radius: 999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(201,162,39,0.3); }
