@@ -10,7 +10,7 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
-      { protocol: 'https', hostname: 'npl-auction-backend-7flz.onrender.com' },
+      { protocol: 'https', hostname: 'apl-auction-backend.onrender.com' },
       { protocol: 'http', hostname: 'localhost', port: '4000' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
@@ -35,8 +35,8 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://res.cloudinary.com https://npl-auction-backend-7flz.onrender.com",
-              "connect-src 'self' https://npl-auction-backend-7flz.onrender.com wss://npl-auction-backend-7flz.onrender.com ws://localhost:4000 http://localhost:4000",
+              "img-src 'self' data: blob: https://res.cloudinary.com https://apl-auction-backend.onrender.com",
+              "connect-src 'self' https://apl-auction-backend.onrender.com wss://apl-auction-backend.onrender.com ws://localhost:4000 http://localhost:4000",
               "font-src 'self'",
               "frame-ancestors 'self'",
             ].join('; '),
