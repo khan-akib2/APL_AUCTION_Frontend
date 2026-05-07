@@ -55,37 +55,29 @@ const nextConfig = {
             value: 'same-origin-allow-popups',
           },
           {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
+  key: 'Content-Security-Policy',
+  value: [
+    "default-src 'self'",
 
-              // Scripts
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    // Scripts
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
 
-              // Styles
-              "style-src 'self' 'unsafe-inline'",
+    // Styles
+    "style-src 'self' 'unsafe-inline'",
 
-              // Images
-              "img-src 'self' data: blob: https: http:",
+    // Images
+    "img-src 'self' data: blob: https: http:",
 
-              // API + Socket connections
-              [
-                "connect-src 'self'",
-                "https://apl-auction-backend.onrender.com",
-                "https://*.vercel.app",
-                "ws://localhost:4000",
-                "http://localhost:4000",
-                "wss://apl-auction-backend.onrender.com",
-                "https://vitals.vercel-insights.com",
-              ].join(' '),
+    // API requests + sockets
+    "connect-src 'self' https://apl-auction-backend.onrender.com https://*.vercel.app http://localhost:4000 ws://localhost:4000 wss://apl-auction-backend.onrender.com https://vitals.vercel-insights.com",
 
-              // Fonts
-              "font-src 'self' data: https:",
+    // Fonts
+    "font-src 'self' data: https:",
 
-              // Frames
-              "frame-ancestors 'self'",
-            ].join('; '),
-          },
+    // Frames
+    "frame-ancestors 'self'",
+  ].join('; '),
+},
         ],
       },
     ];
