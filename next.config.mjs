@@ -54,6 +54,8 @@ const nextConfig = {
             key: 'Cross-Origin-Opener-Policy',
             value: 'same-origin-allow-popups',
           },
+
+          //new gpt key
           {
   key: 'Content-Security-Policy',
   value: [
