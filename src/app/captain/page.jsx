@@ -36,6 +36,8 @@ export default function CaptainDashboard() {
   const [revealing, setRevealing] = useState(false);
   const [revealedPlayerIds, setRevealedPlayerIds] = useState(new Set()); // player IDs revealed by this team
   const [revealOverlayPlayer, setRevealOverlayPlayer] = useState(null); // shown after winning mystery player
+  const [finalizingState, setFinalizingState] = useState(null);
+  const [finalizingCountdown, setFinalizingCountdown] = useState(0);
 
   const loadData = useCallback(async () => {
     const [teamRes, sessionRes] = await Promise.all([
@@ -49,13 +51,36 @@ export default function CaptainDashboard() {
       setActivePlayer(sessionRes.session.playerId);
       setBidHistory(sessionRes.session.bids?.slice().reverse() || []);
       setTimer({ remaining: sessionRes.session.timerRemaining, paused: sessionRes.session.timerPaused });
+      if (sessionRes.session.status === 'finalizing') {
+        const elapsed = Math.floor((Date.now() - new Date(sessionRes.session.finalizingAt || Date.now()).getTime()) / 1000);
+        setFinalizingState(sessionRes.session);
+        setFinalizingCountdown(Math.max(0, 3 - elapsed));
+      } else {
+        setFinalizingState(null);
+        setFinalizingCountdown(0);
+      }
     } else {
       setActiveSession(null); setActivePlayer(null);
+      setFinalizingState(null); setFinalizingCountdown(0);
       setTimer({ remaining: null, paused: false });
     }
     setLoading(false);
     return !!myTeam;
   }, [request]);
+
+  useEffect(() => {
+    if (!finalizingState) return;
+    const interval = setInterval(() => {
+      setFinalizingCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [finalizingState]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
@@ -94,7 +119,14 @@ export default function CaptainDashboard() {
       playBidSound();
       if (data.bidderTeamId !== team?._id?.toString()) toast(`Outbid — ${data.currentBid} pts`, 'warning');
     });
+    socket.on('auction:finalizing', (data) => {
+      setFinalizingState(data);
+      setFinalizingCountdown(data.countdown || 3);
+      toast(`Bidding is now locked — ${data.action === 'sold' ? `selling to ${data.leaderTeamName || 'leader'}` : 'marking unsold'}...`, 'warning');
+    });
     socket.on('auction:sold', ({ player, team: soldTeam }) => {
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
       if (soldTeam._id?.toString() === team?._id?.toString()) {
         playSoldSound();
         // If mystery player — show reveal overlay with full details
@@ -115,7 +147,11 @@ export default function CaptainDashboard() {
       setTimer({ remaining: null, paused: false });
       loadData();
     });
-    socket.on('auction:unsold', () => { setActiveSession(null); setActivePlayer(null); setBidHistory([]); setTimer({ remaining: null, paused: false }); playUnsoldSound(); });
+    socket.on('auction:unsold', () => {
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+      setActiveSession(null); setActivePlayer(null); setBidHistory([]); setTimer({ remaining: null, paused: false }); playUnsoldSound();
+    });
     socket.on('auction:resale', () => { loadData(); });
     socket.on('team:token_added', ({ teamId, revealTokens }) => {
       setTeam(prev => {
@@ -137,6 +173,7 @@ export default function CaptainDashboard() {
       socket.off('viewers:count');
       socket.off('auction:start');
       socket.off('auction:bid_update');
+      socket.off('auction:finalizing');
       socket.off('auction:sold');
       socket.off('auction:unsold');
       socket.off('auction:resale');
@@ -144,10 +181,14 @@ export default function CaptainDashboard() {
       socket.off('team:assigned');
       socket.off('auction:timer');
     };
-  }, [socket, toast, team, loadData]);
+  }, [socket, toast, team, loadData, user]);
+
+  const isFinalizing = Boolean(finalizingState || activeSession?.status === 'finalizing');
+  const isLeading = activeSession?.currentHighestBidder?.toString() === team?._id?.toString();
+  const canBid = activeSession && !isFinalizing && team && team.playerCount < 7 && !isLeading;
 
   const placeBid = async (bidAmount = 10) => {
-    if (!activeSession) return;
+    if (!activeSession || isFinalizing) return;
     setBidding(true);
     const res = await request('/api/auction/bid', { method: 'POST', body: JSON.stringify({ sessionId: activeSession._id, bidAmount }) });
     setBidding(false);
@@ -167,8 +208,6 @@ export default function CaptainDashboard() {
     toast('Player revealed!', 'success');
   };
 
-  const isLeading = activeSession?.currentHighestBidder?.toString() === team?._id?.toString();
-  const canBid = activeSession && team && team.playerCount < 7 && !isLeading;
   const budgetPct = team ? Math.round((team.pointsSpent / 500) * 100) : 0;
 
   // Budget alert thresholds
@@ -290,14 +329,23 @@ export default function CaptainDashboard() {
                   </div>
                 </div>
                 <div className="p-3 space-y-2">
+                  {isFinalizing && (
+                    <div className="px-3 py-2 bg-red-500/15 border border-red-500/40 rounded-xl flex items-center justify-between text-xs text-red-400 font-bold animate-pulse">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
+                        <span>Bidding Locked — Finalizing</span>
+                      </div>
+                      <span className="font-mono text-sm">{finalizingCountdown}s</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-4 gap-2">
                     {[1, 3, 5, 10].map(amt => {
                       const nextBid = activeSession.currentBid + amt;
-                      const canBidAmt = canBid && team.budget >= nextBid;
+                      const canBidAmt = canBid && team.budget >= nextBid && !isFinalizing;
                       return (
                         <button key={amt}
                           onClick={() => placeBid(amt)}
-                          disabled={!canBidAmt || bidding}
+                          disabled={!canBidAmt || bidding || isFinalizing}
                           className="bg-[#c9a227] text-[#0a1628] font-black py-2.5 rounded-xl text-xs hover:bg-[#f0c040] disabled:opacity-25 disabled:cursor-not-allowed flex flex-col items-center justify-center transition-all active:scale-[0.97]">
                           <span className="text-xs font-black">+{amt}</span>
                           <span className="text-[9px] opacity-70">{nextBid}</span>
@@ -308,7 +356,7 @@ export default function CaptainDashboard() {
                   {bidding && <div className="flex justify-center"><Spinner size="sm" /></div>}
                   {!canBid && activeSession && (
                     <p className="text-center text-white/40 text-[10px]">
-                      {team?.playerCount >= 7 ? 'Squad full' : isLeading ? 'You are leading' : 'Low budget'}
+                      {isFinalizing ? 'Bidding locked — sale is finalizing' : team?.playerCount >= 7 ? 'Squad full' : isLeading ? 'You are leading' : 'Low budget'}
                     </p>
                   )}
                 </div>

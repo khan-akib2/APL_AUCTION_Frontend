@@ -27,6 +27,8 @@ export default function AuctionControl() {
   const [timerDuration, setTimerDuration] = useState(30);
   const [queueSearch, setQueueSearch] = useState('');
   const [timerOpen, setTimerOpen] = useState(false);
+  const [finalizingState, setFinalizingState] = useState(null);
+  const [finalizingCountdown, setFinalizingCountdown] = useState(0);
 
   const loadData = useCallback(async () => {
     const [pRes, sRes, tRes] = await Promise.all([
@@ -41,12 +43,41 @@ export default function AuctionControl() {
       setActivePlayer(sRes.session.playerId);
       setBidHistory(sRes.session.bids?.slice().reverse() || []);
       setTimer({ remaining: sRes.session.timerRemaining, paused: sRes.session.timerPaused });
+      if (sRes.session.status === 'finalizing') {
+        const elapsed = Math.floor((Date.now() - new Date(sRes.session.finalizingAt || Date.now()).getTime()) / 1000);
+        const rem = Math.max(0, 3 - elapsed);
+        setFinalizingState({
+          sessionId: sRes.session._id,
+          action: sRes.session.finalizingAction || 'sold',
+          leaderTeamName: sRes.session.currentHighestBidderName,
+          winningBid: sRes.session.currentBid,
+        });
+        setFinalizingCountdown(rem);
+      } else {
+        setFinalizingState(null);
+        setFinalizingCountdown(0);
+      }
     } else {
       setActiveSession(null); setActivePlayer(null);
+      setFinalizingState(null); setFinalizingCountdown(0);
       setTimer({ remaining: null, paused: false });
     }
     setLoading(false);
   }, [request]);
+
+  useEffect(() => {
+    if (!finalizingState) return;
+    const interval = setInterval(() => {
+      setFinalizingCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [finalizingState]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
@@ -87,13 +118,28 @@ export default function AuctionControl() {
       setBidHistory(prev => [{ teamName: data.bidderTeamName, amount: data.currentBid }, ...prev]);
     });
     socket.on('auction:timer', (data) => setTimer(data));
+    socket.on('auction:finalizing', (data) => {
+      setFinalizingState(data);
+      setFinalizingCountdown(data.countdown || 3);
+      if (data.action === 'sold') {
+        toast(`Sale initiated for ${data.leaderTeamName || 'leader'}... Finalizing in 3s`, 'info');
+      } else {
+        toast('Marking unsold... Finalizing in 3s', 'info');
+      }
+    });
     socket.on('auction:sold', ({ player, team }) => {
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+      setActionLoading(false);
       toast(`${player.name} → ${team.name}`, 'success');
       setActiveSession(null); setActivePlayer(null); setBidHistory([]);
       setTimer({ remaining: null, paused: false });
       loadData();
     });
     socket.on('auction:unsold', ({ player }) => {
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+      setActionLoading(false);
       toast(`${player.name} unsold`, 'info');
       setActiveSession(null); setActivePlayer(null); setBidHistory([]);
       setTimer({ remaining: null, paused: false });
@@ -102,7 +148,8 @@ export default function AuctionControl() {
     socket.on('players:updated', () => loadData());
     return () => {
       socket.off('auction:start'); socket.off('auction:bid_update');
-      socket.off('auction:timer'); socket.off('auction:sold'); socket.off('auction:unsold');
+      socket.off('auction:timer'); socket.off('auction:finalizing');
+      socket.off('auction:sold'); socket.off('auction:unsold');
       socket.off('players:updated');
     };
   }, [socket, toast, loadData]);
@@ -121,27 +168,41 @@ export default function AuctionControl() {
   };
 
   const markSold = async () => {
-    if (!activeSession) return;
+    if (!activeSession || finalizingState || actionLoading) return;
     setActionLoading(true);
     const res = await request('/api/auction/sold', { method: 'POST', body: JSON.stringify({ sessionId: activeSession._id }) });
-    setActionLoading(false);
-    if (res?.error) { toast(res.error, 'error'); return; }
-    toast(`${res.player?.name} → ${res.team?.name}`, 'success');
-    setActiveSession(null); setActivePlayer(null); setBidHistory([]);
-    setTimer({ remaining: null, paused: false });
-    loadData();
+    if (res?.error) {
+      setActionLoading(false);
+      toast(res.error, 'error');
+      return;
+    }
+    if (res?.status === 'finalizing') {
+      setFinalizingState({
+        sessionId: activeSession._id,
+        action: 'sold',
+        leaderTeamName: activeSession.currentHighestBidderName,
+        winningBid: activeSession.currentBid,
+      });
+      setFinalizingCountdown(3);
+    }
   };
 
   const markUnsold = async () => {
-    if (!activeSession) return;
+    if (!activeSession || finalizingState || actionLoading) return;
     setActionLoading(true);
     const res = await request('/api/auction/unsold', { method: 'POST', body: JSON.stringify({ sessionId: activeSession._id }) });
-    setActionLoading(false);
-    if (res?.error) { toast(res.error, 'error'); return; }
-    toast(`${res.player?.name} unsold`, 'info');
-    setActiveSession(null); setActivePlayer(null); setBidHistory([]);
-    setTimer({ remaining: null, paused: false });
-    loadData();
+    if (res?.error) {
+      setActionLoading(false);
+      toast(res.error, 'error');
+      return;
+    }
+    if (res?.status === 'finalizing') {
+      setFinalizingState({
+        sessionId: activeSession._id,
+        action: 'unsold',
+      });
+      setFinalizingCountdown(3);
+    }
   };
 
   const pauseTimer = async () => {
@@ -337,14 +398,32 @@ export default function AuctionControl() {
                       </div>
                     )}
                   </div>
+                  {finalizingState && (
+                    <div className="mx-3 mt-2 px-3 py-2 bg-[#c9a227]/15 border border-[#c9a227]/40 rounded-xl flex items-center justify-between text-xs text-[#c9a227]">
+                      <div className="flex items-center gap-2 font-bold">
+                        <span className="w-2 h-2 rounded-full bg-[#c9a227] animate-ping" />
+                        Bidding Locked — {finalizingState.action === 'sold' ? `Selling to ${finalizingState.leaderTeamName || 'leader'}` : 'Marking Unsold'}
+                      </div>
+                      <span className="font-mono font-black text-sm">{finalizingCountdown}s</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-2 p-3">
-                    <button onClick={markSold} disabled={!activeSession.currentHighestBidder || actionLoading}
+                    <button onClick={markSold} disabled={!activeSession.currentHighestBidder || actionLoading || Boolean(finalizingState)}
                       className="bg-[#c9a227] text-[#0a1628] font-black py-3 rounded-xl text-sm hover:bg-[#f0c040] disabled:opacity-20 flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]">
-                      {actionLoading ? <Spinner size="sm" /> : 'Mark Sold'}
+                      {finalizingState?.action === 'sold' ? (
+                        <span className="flex items-center gap-1.5">
+                          <Spinner size="sm" />
+                          Finalizing ({finalizingCountdown}s)...
+                        </span>
+                      ) : actionLoading ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        'Mark Sold'
+                      )}
                     </button>
-                    <button onClick={markUnsold} disabled={actionLoading}
-                      className="bg-white/5 border border-white/10 text-white/50 font-semibold py-3 rounded-xl text-sm hover:bg-white/10 hover:text-white transition-all">
-                      Mark Unsold
+                    <button onClick={markUnsold} disabled={actionLoading || Boolean(finalizingState)}
+                      className="bg-white/5 border border-white/10 text-white/50 font-semibold py-3 rounded-xl text-sm hover:bg-white/10 hover:text-white transition-all disabled:opacity-20">
+                      {finalizingState?.action === 'unsold' ? `Finalizing (${finalizingCountdown}s)...` : 'Mark Unsold'}
                     </button>
                   </div>
                 </div>

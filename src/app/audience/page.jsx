@@ -90,6 +90,7 @@ export default function AudiencePage() {
   const [viewerCount, setViewerCount] = useState(0);
   const [timer, setTimer] = useState({ remaining: null, paused: false });
   const [mysteryReveal, setMysteryReveal] = useState(null); // { player, teamName }
+  const [finalizingState, setFinalizingState] = useState(null);
 
   const fetchTeams = useCallback(() =>
     fetch(`${BACKEND_URL}/api/teams-public`).then(r => r.json()).then(d => setTeams(d.teams || [])),
@@ -105,6 +106,11 @@ export default function AudiencePage() {
         setActivePlayer(d.session.playerId);
         setBidHistory(d.session.bids?.slice().reverse() || []);
         setTimer({ remaining: d.session.timerRemaining, paused: d.session.timerPaused });
+        if (d.session.status === 'finalizing') {
+          setFinalizingState(d.session);
+        } else {
+          setFinalizingState(null);
+        }
       }
     });
 
@@ -118,9 +124,15 @@ export default function AudiencePage() {
         setActiveSession(d.session);
         setActivePlayer(d.session.playerId);
         setBidHistory(d.session.bids?.slice().reverse() || []);
+        if (d.session.status === 'finalizing') {
+          setFinalizingState(d.session);
+        } else {
+          setFinalizingState(null);
+        }
       } else if (d.session === null) {
         setActiveSession(null);
         setActivePlayer(null);
+        setFinalizingState(null);
       }
     }, 4000);
 
@@ -143,6 +155,7 @@ export default function AudiencePage() {
     s.on('auction:start', ({ session, player }) => {
       setActiveSession(session); setActivePlayer(player); setBidHistory([]);
       setTimer({ remaining: session.timerRemaining, paused: false });
+      setFinalizingState(null);
       setTab('auction');
     });
     s.on('auction:bid_update', (data) => {
@@ -154,7 +167,11 @@ export default function AudiencePage() {
       setTimer(data);
       // Timer sounds disabled
     });
+    s.on('auction:finalizing', (data) => {
+      setFinalizingState(data);
+    });
     s.on('auction:sold', ({ player, team }) => {
+      setFinalizingState(null);
       setActiveSession(null); setActivePlayer(null); setBidHistory([]);
       setTimer({ remaining: null, paused: false });
       playSoldSound();
@@ -168,15 +185,18 @@ export default function AudiencePage() {
       }
       fetchTeams();
     });
-    s.on('auction:unsold', () => { setActiveSession(null); setActivePlayer(null); setBidHistory([]); setTimer({ remaining: null, paused: false }); playUnsoldSound(); });
+    s.on('auction:unsold', () => { setFinalizingState(null); setActiveSession(null); setActivePlayer(null); setBidHistory([]); setTimer({ remaining: null, paused: false }); playUnsoldSound(); });
     s.on('auction:resale', () => fetchTeams());
-    return () => s.disconnect();
+    return () => {
+      s.off('auction:finalizing');
+      s.disconnect();
+    };
   }, [fetchTeams]);
 
   return (
-    <div className="min-h-screen bg-[#0a1628] text-white flex flex-col">
+    <div className="h-screen max-h-screen bg-[#0a1628] text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-[#0d1e3a] border-b border-[#c9a227]/20 px-4 lg:px-8 h-12 lg:h-14 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-[#0d1e3a] border-b border-[#c9a227]/20 px-4 lg:px-8 h-12 lg:h-14 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-2">
           <Logo size="sm" className="rounded-xl w-7 h-7" />
           <span className="text-[#c9a227] font-bold text-xs tracking-widest uppercase">APL Auction</span>
@@ -199,7 +219,7 @@ export default function AudiencePage() {
       </header>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#c9a227]/15">
+      <div className="flex border-b border-[#c9a227]/15 shrink-0">
         <button onClick={() => setTab('auction')}
           className={`flex-1 lg:flex-none px-4 lg:px-6 py-3 text-xs lg:text-sm font-medium transition-colors ${tab === 'auction' ? 'text-[#c9a227] border-b-2 border-[#c9a227]' : 'text-white/30 hover:text-white/60'}`}>
           Live Auction
@@ -210,17 +230,20 @@ export default function AudiencePage() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col p-3 lg:p-4 overflow-hidden" style={{ height: 'calc(100vh - 100px)' }}>
+      <div className="flex-1 min-h-0 flex flex-col p-3 lg:p-4 overflow-hidden" style={{ height: 'calc(100vh - 105px)' }}>
 
         {/* Auction Tab */}
         {tab === 'auction' && (
           <>
             {activeSession && activePlayer ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4" style={{ height: 'calc(100vh - 130px)' }}>
+              <div
+                className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 overflow-hidden min-h-0"
+                style={{ height: '100%', maxHeight: '100%' }}
+              >
 
                 {/* LEFT: Current Bid */}
-                <div className="lg:col-span-3 flex flex-col gap-3">
-                  <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-5 shadow-xl">
+                <div className="lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-hidden">
+                  <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-5 shadow-xl shrink-0">
                     <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold mb-2">Current Bid</p>
                     <div className="flex items-baseline gap-2 mb-4">
                       <span className="text-5xl font-black text-[#c9a227] tabular-nums leading-none">{activeSession.currentBid}</span>
@@ -229,21 +252,29 @@ export default function AudiencePage() {
                     <div className="border-t border-[#c9a227]/10 pt-3">
                       <p className="text-white/30 text-[9px] uppercase tracking-wider mb-1">Leading Team</p>
                       <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${activeSession.currentHighestBidderName ? 'bg-[#c9a227]/15 border-[#c9a227]/40' : 'bg-white/5 border-white/10'}`}>
-                        {activeSession.currentHighestBidderName && <span className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse" />}
-                        <span className="text-sm font-bold text-[#c9a227]">{activeSession.currentHighestBidderName || 'No bids yet'}</span>
+                        {activeSession.currentHighestBidderName && <span className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse shrink-0" />}
+                        <span className="text-sm font-bold text-[#c9a227] truncate">{activeSession.currentHighestBidderName || 'No bids yet'}</span>
                       </div>
                     </div>
+                    {finalizingState && (
+                      <div className="mt-3 pt-3 border-t border-[#c9a227]/10">
+                        <div className="flex items-center gap-2 bg-[#c9a227]/15 border border-[#c9a227]/40 rounded-xl px-3 py-2 text-xs text-[#c9a227] font-bold">
+                          <span className="w-2 h-2 rounded-full bg-[#c9a227] animate-ping shrink-0" />
+                          <span className="truncate">Bidding Locked · Finalizing Sale</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* CENTER: Player Card */}
-                <div className="lg:col-span-6 flex flex-col h-full">
+                {/* CENTER: Player Card (CONSTRAINED INDEPENDENT HEIGHT - NEVER EXPANDS WITH BID HISTORY) */}
+                <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden" style={{ height: '100%', maxHeight: '100%' }}>
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
-                    <div className="flex-1 h-full">
+                    <div className="flex-1 h-full min-h-0 overflow-hidden">
                       <MysteryPlayerCard player={activePlayer} revealTokens={null} />
                     </div>
                   ) : (
-                  <div className="relative rounded-2xl overflow-hidden shadow-2xl h-full" style={{ minHeight: '400px' }}>
+                  <div className="relative rounded-2xl overflow-hidden shadow-2xl w-full flex flex-col justify-end" style={{ height: '100%', maxHeight: '100%' }}>
                     {activePlayer.photo ? (
                       <>
                         <Image src={activePlayer.photo} alt="" fill unoptimized
@@ -262,15 +293,15 @@ export default function AudiencePage() {
                     )}
                     <div className="absolute inset-0"
                       style={{ background: 'linear-gradient(to bottom, rgba(10,22,40,0.1) 0%, rgba(10,22,40,0.2) 40%, rgba(10,22,40,0.85) 70%, rgba(10,22,40,0.98) 100%)' }} />
-                    <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-500/90 backdrop-blur px-3 py-1 rounded-full">
+                    <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-500/90 backdrop-blur px-3 py-1 rounded-full z-10">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       <span className="text-white text-[10px] font-bold uppercase tracking-wider">Live</span>
                     </div>
-                    <div className="absolute top-4 left-4 bg-[#0a1628]/80 backdrop-blur border border-[#c9a227]/30 rounded-xl px-3 py-2 text-center">
+                    <div className="absolute top-4 left-4 bg-[#0a1628]/80 backdrop-blur border border-[#c9a227]/30 rounded-xl px-3 py-2 text-center z-10">
                       <p className="text-white/40 text-[9px] uppercase tracking-wider">Base</p>
                       <p className="text-[#c9a227] font-black text-lg tabular-nums leading-none">{activePlayer.basePrice}</p>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-8">
+                    <div className="relative z-10 px-5 pb-5 pt-8">
                       <div className="flex items-center gap-2 mb-2">
                         <p className="text-[#c9a227] text-xs uppercase tracking-[0.2em] font-bold opacity-90">{displaySkills(activePlayer.skills)[0] || 'Player'}</p>
                         {activePlayer.gender && (
@@ -279,30 +310,33 @@ export default function AudiencePage() {
                           </span>
                         )}
                       </div>
-                      <h1 className="text-4xl sm:text-5xl font-black text-white uppercase leading-none tracking-tight mb-3">{activePlayer.name}</h1>
+                      <h1 className="text-4xl sm:text-5xl font-black text-white uppercase leading-none tracking-tight mb-3 truncate">{activePlayer.name}</h1>
                       <div className="flex flex-wrap gap-2">{displaySkills(activePlayer.skills).map(s => <SkillBadge key={s} skill={s} />)}</div>
                     </div>
                   </div>
                   )} {/* end mystery/normal */}
                 </div>
 
-                {/* RIGHT: Bid History */}
-                <div className="lg:col-span-3 bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl overflow-hidden shadow-xl flex flex-col h-full">
+                {/* RIGHT: Bid History (INDEPENDENTLY SCROLLABLE PANEL) */}
+                <div
+                  className="lg:col-span-3 bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl overflow-hidden shadow-xl flex flex-col min-h-0"
+                  style={{ height: '100%', maxHeight: '100%' }}
+                >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-[#c9a227]/10 shrink-0">
                     <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Bid History</p>
                     <span className="text-[#c9a227] text-xs font-semibold bg-[#c9a227]/10 px-2 py-0.5 rounded-md">{bidHistory.length}</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto divide-y divide-[#c9a227]/5">
+                  <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden divide-y divide-[#c9a227]/5">
                     {bidHistory.length === 0 && (
                       <p className="text-white/30 text-xs text-center py-8">No bids yet</p>
                     )}
                     {bidHistory.map((b, i) => (
                       <div key={i} className={`flex items-center justify-between px-4 py-2.5 ${i === 0 ? 'bg-[#c9a227]/8' : ''}`}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-white/25 text-xs font-mono w-6 text-right">#{bidHistory.length - i}</span>
-                          <span className={`text-sm font-semibold ${i === 0 ? 'text-white' : 'text-white/60'}`}>{b.teamName}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-white/25 text-xs font-mono w-6 text-right shrink-0">#{bidHistory.length - i}</span>
+                          <span className={`text-sm font-semibold truncate ${i === 0 ? 'text-white' : 'text-white/60'}`}>{b.teamName}</span>
                         </div>
-                        <span className={`text-sm font-black tabular-nums ${i === 0 ? 'text-[#c9a227]' : 'text-white/50'}`}>{b.amount}</span>
+                        <span className={`text-sm font-black tabular-nums shrink-0 ml-2 ${i === 0 ? 'text-[#c9a227]' : 'text-white/50'}`}>{b.amount}</span>
                       </div>
                     ))}
                   </div>

@@ -49,21 +49,21 @@ function Navbar({ scrolled }) {
 
         {/* Desktop nav */}
         <div className="hidden lg:flex items-center gap-6 xl:gap-8">
-            {[
-              { label: 'Home', href: '#hero' },
-              { label: 'Auction', href: '#live-auction' },
-              { label: 'Features', href: '#features' },
-              { label: 'How It Works', href: '#how-it-works' },
-              { label: 'Stats', href: '#stats' },
-            ].map(item => (
-              <a key={item.label} href={item.href}
-                onClick={e => { e.preventDefault(); scrollTo(item.href); }}
-                className="text-white/40 hover:text-white text-sm font-medium transition-colors relative group cursor-pointer">
-                {item.label}
-                <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-[#c9a227] group-hover:w-full transition-all duration-300" />
-              </a>
-            ))}
-          </div>
+          {[
+            { label: 'Home', href: '#hero' },
+            { label: 'Auction', href: '#live-auction' },
+            { label: 'Features', href: '#features' },
+            { label: 'How It Works', href: '#how-it-works' },
+            { label: 'Stats', href: '#stats' },
+          ].map(item => (
+            <a key={item.label} href={item.href}
+              onClick={e => { e.preventDefault(); scrollTo(item.href); }}
+              className="text-white/40 hover:text-white text-sm font-medium transition-colors relative group cursor-pointer">
+              {item.label}
+              <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-[#c9a227] group-hover:w-full transition-all duration-300" />
+            </a>
+          ))}
+        </div>
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ function LiveAuctionCard() {
             setPlayer(null);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     };
     fetchLive();
     const interval = setInterval(fetchLive, 5000);
