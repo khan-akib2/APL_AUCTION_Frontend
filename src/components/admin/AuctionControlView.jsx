@@ -104,6 +104,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
   useEffect(() => {
     if (!socket) return;
+    socket.emit('join:sport', sport);
     const matchSport = (evSport) => !evSport || evSport === sport;
 
     socket.on('auction:start', ({ session, player, sport: evSport }) => {
