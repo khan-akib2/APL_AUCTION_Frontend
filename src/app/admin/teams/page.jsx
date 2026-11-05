@@ -128,8 +128,9 @@ export default function TeamsPage() {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   // Confirm modal state
-  const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm }
+  const [confirmModal, setConfirmModal] = useState(null); // { title, message, confirmText, onConfirm }
 
   const load = async () => {
     setLoading(true);
@@ -165,10 +166,48 @@ export default function TeamsPage() {
     load();
   };
 
+  const handleResetAll = () => {
+    setConfirmModal({
+      title: 'Reset All Teams to Starting State?',
+      message: 'This will restore all team budgets to their starting points (e.g. 1000 pts), clear all players from every squad, restore reveal tokens to 1, and make all sold players available for auction again. Are you sure you want to proceed?',
+      confirmText: 'Reset All Teams',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setResetting(true);
+        const res = await request('/api/teams/reset-all', { method: 'POST' });
+        setResetting(false);
+        if (res?.error) {
+          toast(res.error, 'error');
+        } else {
+          toast('All teams have been reset to starting state!', 'success');
+          load();
+        }
+      },
+    });
+  };
+
+  const handleResetTeam = (team) => {
+    setConfirmModal({
+      title: `Reset ${team.name}?`,
+      message: `Reset ${team.name} to starting state? All acquired players will be returned to the auction pool and budget will be fully restored.`,
+      confirmText: 'Reset Team',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const res = await request(`/api/teams/${team._id}/reset`, { method: 'POST' });
+        if (res?.error) toast(res.error, 'error');
+        else {
+          toast(`${team.name} has been reset to starting state`, 'success');
+          load();
+        }
+      },
+    });
+  };
+
   const handleRemovePlayer = (teamId, playerId, playerName, refundAmt) => {
     setConfirmModal({
       title: 'Remove Player',
       message: `Remove ${playerName} from team? They will go back to the resold queue and ${refundAmt} pts will be refunded.`,
+      confirmText: 'Remove',
       onConfirm: async () => {
         setConfirmModal(null);
         const res = await request(`/api/teams/${teamId}/remove-player/${playerId}`, { method: 'POST' });
@@ -191,6 +230,7 @@ export default function TeamsPage() {
     setConfirmModal({
       title: 'Delete Team',
       message: 'Delete this team? This will unlink the captain.',
+      confirmText: 'Delete',
       onConfirm: async () => {
         setConfirmModal(null);
         const res = await request(`/api/teams/${id}`, { method: 'DELETE' });
@@ -210,10 +250,35 @@ export default function TeamsPage() {
           <h1 className="text-base font-semibold text-white">Teams</h1>
           <p className="text-white/40 text-xs mt-0.5">{teams.length} teams</p>
         </div>
-        <button onClick={openAdd}
-          className="bg-[#c9a227] text-[#0a1628] text-xs font-bold px-4 py-2 rounded-lg hover:bg-[#f0c040] transition-colors">
-          + Add Team
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleResetAll}
+            disabled={resetting}
+            className="flex items-center gap-2 bg-[#c9a227]/10 hover:bg-[#c9a227]/20 border border-[#c9a227]/30 hover:border-[#c9a227]/60 text-[#c9a227] text-xs font-semibold px-3.5 py-2 rounded-lg transition-all disabled:opacity-50 shadow-sm"
+            title="Reset all teams, budgets, and squads to starting state"
+          >
+            <svg
+              className={`w-3.5 h-3.5 ${resetting ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <span>{resetting ? 'Resetting...' : 'Reset All Teams'}</span>
+          </button>
+          <button
+            onClick={openAdd}
+            className="bg-[#c9a227] text-[#0a1628] text-xs font-bold px-4 py-2 rounded-lg hover:bg-[#f0c040] transition-colors"
+          >
+            + Add Team
+          </button>
+        </div>
       </div>
 
       {/* Scrollable grid */}
@@ -231,7 +296,8 @@ export default function TeamsPage() {
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-start">
               {teams.map(team => {
-                const pct = Math.round((team.pointsSpent / 500) * 100);
+                const totalBudget = (team.budget || 0) + (team.pointsSpent || 0) || 1000;
+                const pct = totalBudget > 0 ? Math.round((team.pointsSpent / totalBudget) * 100) : 0;
                 const id = team._id?.toString?.() ?? String(team._id);
                 const isExpanded = expanded !== null && expanded === id;
                 return (
@@ -297,8 +363,13 @@ export default function TeamsPage() {
                           className="text-xs text-white/30 hover:text-white bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-3 py-1.5 rounded-lg transition-colors">
                           Edit
                         </button>
+                        <button onClick={() => handleResetTeam(team)}
+                          title="Reset this team to starting"
+                          className="text-xs text-[#c9a227]/60 hover:text-[#c9a227] bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-2.5 py-1.5 rounded-lg transition-colors">
+                          Reset
+                        </button>
                         <button onClick={() => handleDelete(team._id)}
-                          className="text-xs text-white/30 hover:text-white/60 bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-3 py-1.5 rounded-lg transition-colors">
+                          className="text-xs text-white/30 hover:text-red-400 bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-3 py-1.5 rounded-lg transition-colors">
                           Del
                         </button>
                       </div>
@@ -401,7 +472,7 @@ export default function TeamsPage() {
               </button>
               <button onClick={confirmModal.onConfirm}
                 className="flex-1 bg-red-600/90 text-white font-medium py-2.5 rounded-lg text-sm hover:bg-red-600 transition-colors">
-                Confirm
+                {confirmModal.confirmText || 'Confirm'}
               </button>
             </div>
           </div>
