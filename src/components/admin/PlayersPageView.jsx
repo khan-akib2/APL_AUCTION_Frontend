@@ -7,12 +7,13 @@ import { useToast } from '@/components/Toast';
 import SkillBadge from '@/components/SkillBadge';
 import Spinner from '@/components/Spinner';
 import { displaySkills } from '@/lib/skills';
+import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 const CRICKET_SKILLS = ['Batsman', 'Bowler', 'Wicketkeeper', 'Fielder'];
-const FOOTBALL_SKILLS = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper', 'Winger'];
+const FOOTBALL_SKILLS = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'];
 
 const CRICKET_ROLES = ['Batsman', 'Bowler', 'All-rounder', 'Wicketkeeper', 'Fielder'];
-const FOOTBALL_ROLES = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper', 'Winger'];
+const FOOTBALL_ROLES = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'];
 
 const STATUSES = ['available', 'sold', 'unsold', 'resold'];
 const STATUS_COLORS = {
@@ -187,7 +188,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
           'midfielder': 'Midfielder', 'midfield': 'Midfielder', 'mid': 'Midfielder',
           'defender': 'Defender', 'defence': 'Defender', 'defense': 'Defender',
           'goalkeeper': 'Goalkeeper', 'goal keeper': 'Goalkeeper', 'keeper': 'Goalkeeper', 'gk': 'Goalkeeper',
-          'winger': 'Winger', 'wing': 'Winger',
+          'winger': 'Forward', 'wing': 'Forward',
         } : {
           'batting': 'Batsman', 'batsman': 'Batsman', 'batter': 'Batsman',
           'bowling': 'Bowler', 'bowler': 'Bowler',
@@ -337,7 +338,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 lg:px-6 py-4 border-b border-[#c9a227]/15 gap-3 shrink-0">
         <div>
           <h1 className="text-base font-semibold text-white flex items-center gap-2">
-            <span>{isFootball ? '⚽' : '🏏'}</span>
+            {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
             <span>{sportLabel} Players</span>
           </h1>
           <p className="text-white/40 text-xs mt-0.5">{total} total {sportLabel.toLowerCase()} players</p>

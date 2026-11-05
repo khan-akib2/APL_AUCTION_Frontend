@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -57,8 +58,18 @@ export default function AdminSidebar() {
             <Logo size="sm" className="rounded-xl" />
             <div>
               <div className="text-[#c9a227] font-bold text-xs tracking-widest uppercase">APL Auction</div>
-              <div className="text-[#c9a227]/50 text-[10px] tracking-wider uppercase font-semibold flex items-center gap-1">
-                <span>{isFootball ? '⚽ Football Admin' : '🏏 Cricket Admin'}</span>
+              <div className="text-[#c9a227]/70 text-[10px] tracking-wider uppercase font-semibold flex items-center gap-1.5 mt-0.5">
+                {isFootball ? (
+                  <>
+                    <FootballIcon className="w-3 h-3 text-[#c9a227]" />
+                    <span>Football Admin</span>
+                  </>
+                ) : (
+                  <>
+                    <CricketIcon className="w-3 h-3 text-[#c9a227]" />
+                    <span>Cricket Admin</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -81,7 +92,7 @@ export default function AdminSidebar() {
                   : 'text-white/40 hover:text-white'
               }`}
             >
-              <span>🏏</span>
+              <CricketIcon className="w-3.5 h-3.5" />
               <span>Cricket</span>
             </Link>
             <Link
@@ -93,7 +104,7 @@ export default function AdminSidebar() {
                   : 'text-white/40 hover:text-white'
               }`}
             >
-              <span>⚽</span>
+              <FootballIcon className="w-3.5 h-3.5" />
               <span>Football</span>
             </Link>
           </div>
@@ -116,9 +127,11 @@ export default function AdminSidebar() {
 
         {/* Footer actions */}
         <div className="px-3 py-3 border-t border-[#c9a227]/10 space-y-0.5 shrink-0">
-          <a href="/audience" target="_blank"
-            className="flex items-center px-3 py-2.5 rounded-lg text-sm text-[#c9a227]/30 hover:text-[#c9a227]/70 hover:bg-white/5 transition-colors">
-            Audience View ↗
+          <a
+            href={isFootball ? '/audience/football' : '/audience'}
+            target="_blank"
+            className="flex items-center px-3 py-2.5 rounded-lg text-sm text-[#c9a227]/40 hover:text-[#c9a227] hover:bg-white/5 transition-colors">
+            {isFootball ? 'Football Audience View ↗' : 'Cricket Audience View ↗'}
           </a>
           <button onClick={handleLogout}
             className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-white/25 hover:text-white/60 hover:bg-white/5 transition-colors">

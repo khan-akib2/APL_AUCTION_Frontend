@@ -8,6 +8,7 @@ import SkillBadge from '@/components/SkillBadge';
 import Spinner from '@/components/Spinner';
 import AuctionTimer from '@/components/AuctionTimer';
 import { displaySkills } from '@/lib/skills';
+import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 export default function AuctionControlView({ sport = 'cricket' }) {
   const { request } = useApi();
@@ -247,7 +248,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       <div className="shrink-0 px-4 lg:px-6 pt-4 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span>{isFootball ? '⚽' : '🏏'}</span>
+            {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
             <span>{sportLabel} Auction Control</span>
           </h1>
           {activeSession && (

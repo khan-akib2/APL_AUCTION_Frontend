@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import Spinner from '@/components/Spinner';
 import Image from 'next/image';
+import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 const emptyForm = { name: '', captainId: '', budget: 1000, logo: '' };
 
@@ -38,6 +39,11 @@ function CaptainSelect({ captains, value, onChange }) {
               className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[#c9a227]/8 ${!value ? 'text-white/60' : 'text-white/40'}`}>
               — No captain —
             </button>
+            {captains.length === 0 && (
+              <div className="px-4 py-3 text-xs text-white/40 text-center">
+                No captains registered for this sport yet.
+              </div>
+            )}
             {captains.map(c => (
               <button key={c._id} type="button"
                 onClick={() => { onChange(c._id); setOpen(false); }}
@@ -130,6 +136,13 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const [resetting, setResetting] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
 
+  // Quick-create captain modal state
+  const [showCaptainModal, setShowCaptainModal] = useState(false);
+  const [newCapName, setNewCapName] = useState('');
+  const [newCapEmail, setNewCapEmail] = useState('');
+  const [newCapPass, setNewCapPass] = useState('');
+  const [creatingCap, setCreatingCap] = useState(false);
+
   const isFootball = sport === 'football';
   const sportLabel = isFootball ? 'Football' : 'Cricket';
 
@@ -137,7 +150,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
     setLoading(true);
     const [tRes, uRes] = await Promise.all([
       request(`/api/teams?sport=${sport}`),
-      request('/api/users'),
+      request(`/api/users?sport=${sport}`),
     ]);
     if (tRes) setTeams((tRes.teams || []).map(t => ({ ...t, _id: t._id?.toString() || t._id })));
     if (uRes) setCaptains(uRes.users || []);
@@ -165,6 +178,37 @@ export default function TeamsPageView({ sport = 'cricket' }) {
     toast(editId ? 'Team updated' : 'Team created', 'success');
     setShowForm(false); setForm(emptyForm); setEditId(null);
     load();
+  };
+
+  const handleCreateCaptain = async () => {
+    if (!newCapName.trim() || !newCapEmail.trim() || !newCapPass.trim()) {
+      return toast('Name, email, and password required', 'warning');
+    }
+    setCreatingCap(true);
+    const res = await request('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: newCapName.trim(),
+        email: newCapEmail.trim(),
+        password: newCapPass.trim(),
+        role: 'captain',
+        sport,
+      }),
+    });
+    setCreatingCap(false);
+    if (res?.error) {
+      toast(res.error, 'error');
+      return;
+    }
+    if (res?.user) {
+      toast(`${sportLabel} Captain created!`, 'success');
+      setCaptains(prev => [...prev, res.user]);
+      setForm(f => ({ ...f, captainId: res.user._id }));
+      setShowCaptainModal(false);
+      setNewCapName('');
+      setNewCapEmail('');
+      setNewCapPass('');
+    }
   };
 
   const handleResetAll = () => {
@@ -249,7 +293,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       <div className="flex items-center justify-between px-4 lg:px-6 py-4 border-b border-[#c9a227]/15 shrink-0">
         <div>
           <h1 className="text-base font-semibold text-white flex items-center gap-2">
-            <span>{isFootball ? '⚽' : '🏏'}</span>
+            {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
             <span>{sportLabel} Teams</span>
           </h1>
           <p className="text-white/40 text-xs mt-0.5">{teams.length} teams</p>
@@ -276,16 +320,13 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             </svg>
             <span>{resetting ? 'Resetting...' : 'Reset All Teams'}</span>
           </button>
-          <button
-            onClick={openAdd}
-            className="bg-[#c9a227] text-[#0a1628] text-xs font-bold px-4 py-2 rounded-lg hover:bg-[#f0c040] transition-colors"
-          >
+          <button onClick={openAdd}
+            className="bg-[#c9a227] text-[#0a1628] text-xs font-bold px-3 py-2 rounded-lg hover:bg-[#f0c040] transition-colors flex items-center gap-1.5">
             + Add Team
           </button>
         </div>
       </div>
 
-      {/* Scrollable grid */}
       <div className="flex-1 overflow-hidden p-4 lg:p-6">
         <div className="h-full border border-[#c9a227]/20 rounded-xl overflow-hidden bg-[#060f1e] flex flex-col">
           {/* iframe-style header bar */}
@@ -293,89 +334,93 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             <span className="w-2.5 h-2.5 rounded-full bg-[#c9a227]/20" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#c9a227]/20" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#c9a227]/20" />
-            <span className="ml-2 text-white/20 text-xs">{sport}-teams · {teams.length} total</span>
+            <span className="text-white/20 text-xs ml-2 font-mono">teams · {teams.length} total</span>
           </div>
 
-          {/* scrollable content */}
           <div className="flex-1 overflow-y-auto p-4">
             {teams.length === 0 ? (
-              <div className="text-center py-16 text-white/30 text-sm">
-                No {sportLabel.toLowerCase()} teams created yet. Click <span className="text-[#c9a227] font-semibold">+ Add Team</span> to add your first team!
-              </div>
+              <div className="text-center py-16 text-white/30 text-sm">No {sportLabel.toLowerCase()} teams yet. Click &ldquo;+ Add Team&rdquo; to create one.</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-start">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {teams.map(team => {
-                  const totalBudget = (team.budget || 0) + (team.pointsSpent || 0) || 1000;
-                  const pct = totalBudget > 0 ? Math.round((team.pointsSpent / totalBudget) * 100) : 0;
-                  const id = team._id?.toString?.() ?? String(team._id);
-                  const isExpanded = expanded !== null && expanded === id;
+                  const isExpanded = expanded === team._id;
+                  const pct = Math.round(((team.pointsSpent || 0) / (team.initialBudget || 1000)) * 100);
+                  const maxPlayers = 7;
+                  const count = team.playerCount ?? team.players?.length ?? 0;
                   return (
-                    <div key={team._id} className="bg-[#0d1e3a] border border-[#c9a227]/15 rounded-xl overflow-hidden">
-                      <div className="p-5">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
+                    <div key={team._id} className="bg-[#0a1628] border border-[#c9a227]/20 rounded-xl overflow-hidden shadow-lg flex flex-col justify-between">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             {team.logo ? (
-                              <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-[#c9a227]/20 bg-[#0a1628] shrink-0">
+                              <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-[#c9a227]/20 bg-[#0d1e3a] shrink-0">
                                 <Image src={team.logo} alt={team.name} fill unoptimized className="object-contain p-1" />
                               </div>
                             ) : (
-                              <div className="w-10 h-10 rounded-lg border border-[#c9a227]/10 bg-[#0a1628] flex items-center justify-center shrink-0">
-                                <span className="text-[#c9a227]/20 text-lg font-black">{team.name[0]}</span>
+                              <div className="w-10 h-10 rounded-lg border border-[#c9a227]/15 bg-[#0d1e3a] flex items-center justify-center shrink-0">
+                                <span className="text-[#c9a227]/40 text-sm font-black">{team.name[0]}</span>
                               </div>
                             )}
-                            <div>
-                              <h2 className="text-base font-semibold text-white">{team.name}</h2>
-                              <p className="text-white/40 text-xs mt-0.5">{team.captainId?.name || 'No captain'}</p>
+                            <div className="min-w-0">
+                              <h3 className="text-white font-semibold text-sm truncate">{team.name}</h3>
+                              <p className="text-white/40 text-xs truncate">
+                                {team.captainId?.name || <span className="text-white/20 italic">No captain</span>}
+                              </p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-white font-semibold">{team.budget}</div>
-                            <div className="text-white/40 text-xs">pts budget</div>
+                          <div className="text-right shrink-0">
+                            <span className="text-[#c9a227] font-black text-base">{team.budget}</span>
+                            <span className="text-white/30 text-[10px] block">pts budget</span>
                           </div>
                         </div>
 
-                        <div className="h-1 bg-[#c9a227]/8 rounded-full overflow-hidden mb-4">
-                          <div className="h-full bg-[#c9a227]/50 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs text-white/40 mb-4">
-                          <span>{team.playerCount}/7 players</span>
-                          <span>{pct}% spent</span>
-                        </div>
-
-                        {/* Reveal tokens */}
-                        <div className="flex items-center justify-between mb-3 px-1">
-                          <div className="flex items-center gap-1.5">
-                            <svg className="w-3.5 h-3.5 text-purple-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            <span className="text-white/40 text-xs">Reveal tokens:</span>
-                            <span className={`text-xs font-bold tabular-nums ${(team.revealTokens || 0) > 0 ? 'text-purple-400' : 'text-white/20'}`}>
-                              {team.revealTokens ?? 0}
-                            </span>
+                        {/* Stats bar */}
+                        <div className="space-y-1.5 mb-3">
+                          <div className="flex items-center justify-between text-[11px] text-white/40">
+                            <span>{count}/{maxPlayers} players</span>
+                            <span>{pct}% spent</span>
                           </div>
-                          <button
-                            onClick={() => handleAddToken(team._id, team.name)}
-                            className="text-[10px] font-bold px-2 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400 hover:bg-purple-500/25 transition-colors">
+                          <div className="h-1 bg-[#c9a227]/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#c9a227] rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                          </div>
+                        </div>
+
+                        {/* Tokens info */}
+                        <div className="flex items-center justify-between py-1 mb-3 text-xs">
+                          <span className="text-purple-400 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            Reveal tokens: <strong>{team.revealTokens ?? 1}</strong>
+                          </span>
+                          <button onClick={() => handleAddToken(team._id, team.name)}
+                            className="text-[11px] text-purple-300 hover:text-white bg-purple-500/15 hover:bg-purple-500/30 border border-purple-500/30 px-2 py-0.5 rounded transition-colors">
                             + Token
                           </button>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => setExpanded(isExpanded ? null : id)}
-                            className="flex-1 text-xs text-white/30 hover:text-white bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 py-1.5 rounded-lg transition-colors">
-                            {isExpanded ? 'Hide Squad' : 'View Squad'}
+                        {/* Card actions */}
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-[#c9a227]/10">
+                          <button onClick={async () => {
+                            if (!isExpanded && !team.players) {
+                              const res = await request(`/api/teams/${team._id}`);
+                              if (res?.team) {
+                                setTeams(prev => prev.map(t => t._id === team._id ? { ...t, players: res.team.players } : t));
+                              }
+                            }
+                            setExpanded(isExpanded ? null : team._id);
+                          }}
+                            className="flex-1 text-xs text-white/50 hover:text-white bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 py-1.5 rounded-lg transition-colors text-center">
+                            {isExpanded ? 'Hide' : 'View Squad'}
+                          </button>
+                          <button
+                            onClick={() => handleResetTeam(team)}
+                            title="Reset team budget and squad"
+                            className="text-xs text-[#c9a227]/70 hover:text-[#c9a227] bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Reset
                           </button>
                           <button onClick={() => openEdit(team)}
-                            className="text-xs text-white/30 hover:text-white bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-3 py-1.5 rounded-lg transition-colors">
+                            className="text-xs text-white/50 hover:text-white bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-3 py-1.5 rounded-lg transition-colors">
                             Edit
-                          </button>
-                          <button onClick={() => handleResetTeam(team)}
-                            title="Reset this team to starting"
-                            className="text-xs text-[#c9a227]/60 hover:text-[#c9a227] bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-2.5 py-1.5 rounded-lg transition-colors">
-                            Reset
                           </button>
                           <button onClick={() => handleDelete(team._id)}
                             className="text-xs text-white/30 hover:text-red-400 bg-[#0d1e3a] border border-[#c9a227]/15 hover:bg-[#c9a227]/12 px-3 py-1.5 rounded-lg transition-colors">
@@ -413,7 +458,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Team Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-6 w-full max-w-md">
@@ -433,7 +478,16 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                 <LogoUpload value={form.logo} onChange={url => setForm(f => ({ ...f, logo: url }))} token={token} toast={toast} />
               </div>
               <div>
-                <label className="text-xs text-white/30 uppercase tracking-wider mb-1.5 block">Assign Captain</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs text-white/30 uppercase tracking-wider block">Assign Captain</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCaptainModal(true)}
+                    className="text-[11px] text-[#c9a227] hover:underline flex items-center gap-1 font-semibold"
+                  >
+                    + New {sportLabel} Captain
+                  </button>
+                </div>
                 <CaptainSelect
                   captains={captains}
                   value={form.captainId}
@@ -463,6 +517,67 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                 disabled={saving}
                 className="flex-1 bg-[#c9a227] text-[#0a1628] font-semibold py-2.5 rounded-lg text-sm hover:bg-[#f0c040] disabled:opacity-40 flex items-center justify-center gap-2">
                 {saving ? <Spinner size="sm" /> : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Captain Modal */}
+      {showCaptainModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0d1e3a] border border-[#c9a227]/25 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+              {isFootball ? <FootballIcon className="w-4 h-4 text-[#c9a227]" /> : <CricketIcon className="w-4 h-4 text-[#c9a227]" />}
+              <span>Create New {sportLabel} Captain</span>
+            </h3>
+            <p className="text-white/40 text-xs mb-4">Add a dedicated login for this team&apos;s captain.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] text-white/40 uppercase tracking-wider block mb-1">Captain Name</label>
+                <input
+                  value={newCapName}
+                  onChange={e => setNewCapName(e.target.value)}
+                  placeholder="e.g. Alex Ferguson"
+                  className="w-full bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a227]"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/40 uppercase tracking-wider block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newCapEmail}
+                  onChange={e => setNewCapEmail(e.target.value)}
+                  placeholder="e.g. captain@football.com"
+                  className="w-full bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a227]"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-white/40 uppercase tracking-wider block mb-1">Password</label>
+                <input
+                  type="password"
+                  value={newCapPass}
+                  onChange={e => setNewCapPass(e.target.value)}
+                  placeholder="Password for login"
+                  className="w-full bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a227]"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2.5 mt-5">
+              <button
+                type="button"
+                onClick={() => setShowCaptainModal(false)}
+                className="flex-1 bg-[#c9a227]/10 text-white/60 hover:text-white py-2 rounded-lg text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCaptain}
+                disabled={creatingCap}
+                className="flex-1 bg-[#c9a227] text-[#0a1628] hover:bg-[#f0c040] py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {creatingCap ? <Spinner size="sm" /> : 'Create Captain'}
               </button>
             </div>
           </div>

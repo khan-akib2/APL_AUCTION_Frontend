@@ -39,10 +39,13 @@ export default function CaptainDashboard() {
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
 
+  const captainSport = team?.sport || user?.sport || 'cricket';
+
   const loadData = useCallback(async () => {
+    const sportParam = (team?.sport || user?.sport) ? `?sport=${team?.sport || user?.sport}` : '';
     const [teamRes, sessionRes] = await Promise.all([
-      request('/api/teams'),
-      request('/api/auction/active'),
+      request(`/api/teams${sportParam}`),
+      request(`/api/auction/active${sportParam}`),
     ]);
     const myTeam = teamRes?.teams?.[0] || null;
     if (myTeam) setTeam(myTeam);
@@ -102,7 +105,13 @@ export default function CaptainDashboard() {
 
   useEffect(() => {
     if (!socket) return;
-    socket.on('connect', () => setIsConnected(true));
+    socket.on('connect', () => {
+      setIsConnected(true);
+      if (captainSport) socket.emit('join:sport', captainSport);
+    });
+    if (socket.connected && captainSport) {
+      socket.emit('join:sport', captainSport);
+    }
     socket.on('disconnect', () => setIsConnected(false));
     // Sync initial state
     // eslint-disable-next-line react-hooks/set-state-in-effect

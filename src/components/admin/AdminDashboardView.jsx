@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import Spinner from '@/components/Spinner';
+import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 export default function AdminDashboardView({ sport = 'cricket' }) {
   const { request } = useApi();
@@ -48,7 +49,7 @@ export default function AdminDashboardView({ sport = 'cricket' }) {
     <div className="p-4 lg:p-6">
       <div className="mb-4">
         <h1 className="text-lg font-bold text-white flex items-center gap-2">
-          <span>{isFootball ? '⚽' : '🏏'}</span>
+          {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
           <span>{sportLabel} Dashboard</span>
         </h1>
         <p className="text-[#c9a227]/40 text-xs mt-0.5">Live {sportLabel.toLowerCase()} auction overview</p>
@@ -69,8 +70,11 @@ export default function AdminDashboardView({ sport = 'cricket' }) {
           <div className="text-[#c9a227] font-semibold text-sm">{sportLabel} Auction Control →</div>
           <div className="text-white/30 text-xs mt-1">Start bidding for {sportLabel.toLowerCase()} players</div>
         </a>
-        <a href="/audience" target="_blank" className="bg-[#0d1e3a] border border-[#c9a227]/15 rounded-xl p-4 hover:border-[#c9a227]/30 transition-colors">
-          <div className="text-white/50 font-semibold text-sm">Audience View ↗</div>
+        <a
+          href={isFootball ? '/audience/football' : '/audience'}
+          target="_blank"
+          className="bg-[#0d1e3a] border border-[#c9a227]/15 rounded-xl p-4 hover:border-[#c9a227]/30 transition-colors">
+          <div className="text-white/50 font-semibold text-sm">{sportLabel} Audience View ↗</div>
           <div className="text-white/25 text-xs mt-1">Share with spectators</div>
         </a>
       </div>

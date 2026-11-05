@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import Spinner from '@/components/Spinner';
+import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 export default function AuctionLogView({ sport = 'cricket' }) {
   const { request } = useApi();
@@ -31,7 +32,7 @@ export default function AuctionLogView({ sport = 'cricket' }) {
       <div className="px-4 lg:px-6 py-4 border-b border-[#c9a227]/15 shrink-0 flex items-center justify-between">
         <div>
           <h1 className="text-base font-semibold text-white flex items-center gap-2">
-            <span>{isFootball ? '⚽' : '🏏'}</span>
+            {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
             <span>{sportLabel} Auction Log</span>
           </h1>
           <p className="text-white/40 text-xs mt-0.5">{logs.length} entries</p>
