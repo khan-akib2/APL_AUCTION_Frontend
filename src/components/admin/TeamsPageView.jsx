@@ -293,7 +293,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       <div className="flex items-center justify-between px-4 lg:px-6 py-4 border-b border-[#c9a227]/15 shrink-0">
         <div>
           <h1 className="text-base font-semibold text-white flex items-center gap-2">
-            {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
+            {isFootball ? <FootballIcon className="w-5 h-5 text-emerald-400" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
             <span>{sportLabel} Teams</span>
           </h1>
           <p className="text-white/40 text-xs mt-0.5">{teams.length} teams</p>
@@ -321,14 +321,14 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             <span>{resetting ? 'Resetting...' : 'Reset All Teams'}</span>
           </button>
           <button onClick={openAdd}
-            className="bg-[#c9a227] text-[#0a1628] text-xs font-bold px-3 py-2 rounded-lg hover:bg-[#f0c040] transition-colors flex items-center gap-1.5">
+            className={`text-xs font-bold px-3.5 py-2 rounded-lg transition-colors flex items-center gap-1.5 ${isFootball ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-md shadow-emerald-500/20' : 'bg-[#c9a227] text-[#0a1628] hover:bg-[#f0c040]'}`}>
             + Add Team
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden p-4 lg:p-6">
-        <div className="h-full border border-[#c9a227]/20 rounded-xl overflow-hidden bg-[#060f1e] flex flex-col">
+        <div className="h-full border rounded-xl overflow-hidden flex flex-col ${isFootball ? 'bg-[#05140e] border-emerald-500/20 shadow-xl' : 'bg-[#060f1e] border-[#c9a227]/20'}">
           {/* iframe-style header bar */}
           <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a1628] border-b border-[#c9a227]/15 shrink-0">
             <span className="w-2.5 h-2.5 rounded-full bg-[#c9a227]/20" />
@@ -348,7 +348,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                   const maxPlayers = 7;
                   const count = team.playerCount ?? team.players?.length ?? 0;
                   return (
-                    <div key={team._id} className="bg-[#0a1628] border border-[#c9a227]/20 rounded-xl overflow-hidden shadow-lg flex flex-col justify-between">
+                    <div key={team._id} className={`border rounded-xl overflow-hidden shadow-lg flex flex-col justify-between ${isFootball ? 'bg-[#071d14] border-emerald-500/20 hover:border-emerald-500/40' : 'bg-[#0a1628] border-[#c9a227]/20'}`}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -369,7 +369,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-[#c9a227] font-black text-base">{team.budget}</span>
+                            <span className={`font-black text-base ${isFootball ? 'text-emerald-400' : 'text-[#c9a227]'}`}>{team.budget}</span>
                             <span className="text-white/30 text-[10px] block">pts budget</span>
                           </div>
                         </div>
@@ -381,7 +381,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                             <span>{pct}% spent</span>
                           </div>
                           <div className="h-1 bg-[#c9a227]/10 rounded-full overflow-hidden">
-                            <div className="h-full bg-[#c9a227] rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                            <div className={`h-full rounded-full transition-all ${isFootball ? 'bg-emerald-400' : 'bg-[#c9a227]'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                           </div>
                         </div>
 
@@ -461,7 +461,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       {/* Team Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-6 w-full max-w-md">
+          <div className={`border rounded-2xl p-6 w-full max-w-md shadow-2xl ${isFootball ? 'bg-[#071d14] border-emerald-500/30' : 'bg-[#0d1e3a] border-[#c9a227]/20'}`}>
             <h2 className="text-base font-semibold text-white mb-5">{editId ? `Edit ${sportLabel} Team` : `Add ${sportLabel} Team`}</h2>
             <div className="space-y-4">
               <div>
@@ -515,7 +515,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 bg-[#c9a227] text-[#0a1628] font-semibold py-2.5 rounded-lg text-sm hover:bg-[#f0c040] disabled:opacity-40 flex items-center justify-center gap-2">
+                className={`flex-1 font-bold py-2.5 rounded-lg text-sm disabled:opacity-40 flex items-center justify-center gap-2 ${isFootball ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300' : 'bg-[#c9a227] text-[#0a1628] hover:bg-[#f0c040]'}`}>
                 {saving ? <Spinner size="sm" /> : 'Save'}
               </button>
             </div>

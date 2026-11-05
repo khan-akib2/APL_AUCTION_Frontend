@@ -183,12 +183,18 @@ export default function PlayersPageView({ sport = 'cricket' }) {
         const rawGender = obj['gender'] || 'Male';
         const rawSkills = obj['primary skill'] || obj['primary skills'] || obj['skills'] || '';
 
+        const validFootballSkills = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'];
         const skillMap = isFootball ? {
           'forward': 'Forward', 'striker': 'Forward', 'attacker': 'Forward',
           'midfielder': 'Midfielder', 'midfield': 'Midfielder', 'mid': 'Midfielder',
           'defender': 'Defender', 'defence': 'Defender', 'defense': 'Defender',
           'goalkeeper': 'Goalkeeper', 'goal keeper': 'Goalkeeper', 'keeper': 'Goalkeeper', 'gk': 'Goalkeeper',
           'winger': 'Forward', 'wing': 'Forward',
+          // Gracefully convert cricket roles to football positions if cricket CSV was loaded
+          'batsman': 'Forward', 'batting': 'Forward', 'batter': 'Forward',
+          'bowler': 'Midfielder', 'bowling': 'Midfielder',
+          'all-rounder': 'Defender', 'allrounder': 'Defender', 'fielder': 'Defender', 'fielding': 'Defender',
+          'wicketkeeper': 'Goalkeeper', 'wicket keeper': 'Goalkeeper', 'wicket-keeper': 'Goalkeeper',
         } : {
           'batting': 'Batsman', 'batsman': 'Batsman', 'batter': 'Batsman',
           'bowling': 'Bowler', 'bowler': 'Bowler',
@@ -196,11 +202,16 @@ export default function PlayersPageView({ sport = 'cricket' }) {
           'fielding': 'Fielder', 'fielder': 'Fielder',
         };
 
-        const skills = rawSkills
+        let skills = rawSkills
           .split(/[|,]/)
-          .map(s => skillMap[s.trim().toLowerCase()] || s.trim())
+          .map(s => skillMap[s.trim().toLowerCase()] || (isFootball ? '' : s.trim()))
           .filter(Boolean)
           .filter((v, i, a) => a.indexOf(v) === i);
+
+        if (isFootball) {
+          skills = skills.filter(s => validFootballSkills.includes(s));
+          if (!skills.length) skills = ['Forward'];
+        }
 
         const gender = rawGender.charAt(0).toUpperCase() + rawGender.slice(1).toLowerCase();
 
@@ -338,7 +349,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 lg:px-6 py-4 border-b border-[#c9a227]/15 gap-3 shrink-0">
         <div>
           <h1 className="text-base font-semibold text-white flex items-center gap-2">
-            {isFootball ? <FootballIcon className="w-5 h-5 text-[#c9a227]" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
+            {isFootball ? <FootballIcon className="w-5 h-5 text-emerald-400" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
             <span>{sportLabel} Players</span>
           </h1>
           <p className="text-white/40 text-xs mt-0.5">{total} total {sportLabel.toLowerCase()} players</p>
@@ -359,7 +370,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
             Delete All
           </button>
           <button onClick={openAdd}
-            className="bg-[#c9a227] text-[#0a1628] text-xs font-bold px-4 py-2 rounded-lg hover:bg-[#f0c040] transition-colors">
+            className={`text-xs font-bold px-4 py-2 rounded-lg transition-colors ${isFootball ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-md shadow-emerald-500/20' : 'bg-[#c9a227] text-[#0a1628] hover:bg-[#f0c040]'}`}>
             + Add Player
           </button>
         </div>
@@ -382,8 +393,8 @@ export default function PlayersPageView({ sport = 'cricket' }) {
               onClick={() => { setStatus(s); setPage(1); }}
               className={`text-xs px-3 py-1.5 rounded-lg capitalize font-medium transition-colors shrink-0 ${
                 status === s
-                  ? 'bg-[#c9a227] text-[#0a1628] font-bold'
-                  : 'bg-[#0d1e3a] text-white/50 hover:text-white border border-[#c9a227]/15'
+                  ? (isFootball ? 'bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-500/20' : 'bg-[#c9a227] text-[#0a1628] font-bold')
+                  : (isFootball ? 'bg-[#071d14] text-white/50 hover:text-white border border-emerald-500/20' : 'bg-[#0d1e3a] text-white/50 hover:text-white border border-[#c9a227]/15')
               }`}>
               {s}
             </button>
@@ -393,7 +404,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
 
       {/* Players List Table */}
       <div className="flex-1 overflow-hidden p-4 lg:p-6">
-        <div className="h-full border border-[#c9a227]/20 rounded-xl overflow-hidden bg-[#060f1e] flex flex-col">
+        <div className="h-full border rounded-xl overflow-hidden flex flex-col ${isFootball ? 'bg-[#05140e] border-emerald-500/20 shadow-xl' : 'bg-[#060f1e] border-[#c9a227]/20'}">
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48"><Spinner size="lg" /></div>
@@ -404,7 +415,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[650px]">
-                  <thead className="sticky top-0 bg-[#0a1628] z-10">
+                  <thead className={`sticky top-0 z-10 ${isFootball ? 'bg-[#071d14]' : 'bg-[#0a1628]'}`}>
                     <tr className="border-b border-[#c9a227]/15 text-left text-white/40 text-xs uppercase tracking-wider font-medium">
                       <th className="px-4 py-3">Player</th>
                       <th className="px-4 py-3">Role / Skills</th>
@@ -438,7 +449,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
                             {displaySkills(p.skills).map(s => <SkillBadge key={s} skill={s} />)}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-[#c9a227] font-semibold tabular-nums">{p.basePrice} pts</td>
+                        <td className={`px-4 py-3 font-semibold tabular-nums ${isFootball ? 'text-emerald-400' : 'text-[#c9a227]'}`}>{p.basePrice} pts</td>
                         <td className="px-4 py-3">
                           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLORS[p.status] || 'bg-white/10 text-white'}`}>
                             {p.status}
