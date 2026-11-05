@@ -9,10 +9,10 @@ import Spinner from '@/components/Spinner';
 import { displaySkills } from '@/lib/skills';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
-const CRICKET_SKILLS = ['Batsman', 'Bowler', 'Wicketkeeper', 'Fielder'];
+const CRICKET_SKILLS = ['Batsman', 'Bowler', 'All-Rounder', 'Wicketkeeper', 'Fielder'];
 const FOOTBALL_SKILLS = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'];
 
-const CRICKET_ROLES = ['Batsman', 'Bowler', 'All-rounder', 'Wicketkeeper', 'Fielder'];
+const CRICKET_ROLES = ['Batsman', 'Bowler', 'All-Rounder', 'Wicketkeeper', 'Fielder'];
 const FOOTBALL_ROLES = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'];
 
 const STATUSES = ['available', 'sold', 'unsold', 'resold'];
@@ -24,7 +24,14 @@ const STATUS_COLORS = {
 };
 
 const emptyForm = {
-  name: '', photo: '', skills: [], gender: 'Male', basePrice: 20, status: 'available',
+  name: '',
+  photo: '',
+  category: 'Batsman',
+  playingStyle: '',
+  skills: ['Batsman'],
+  gender: 'Male',
+  basePrice: 20,
+  status: 'available',
   isMysteryPlayer: false,
   mysteryConfig: { roleHint: '', ratingRange: '', formStatus: '', region: '', isStar: false, isBust: false, deceptionLevel: 'low', blurredPhoto: '' },
 };
@@ -70,7 +77,7 @@ function PlayerPhoto({ src, alt }) {
   return <Image src={src} alt={alt} fill unoptimized className="object-cover" onError={() => setErr(true)} />;
 }
 
-function PhotoUpload({ value, onChange, token, toast }) {
+function PhotoUpload({ value, onChange, token, toast, playerName = '' }) {
   const [uploading, setUploading] = useState(false);
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
@@ -80,54 +87,84 @@ function PhotoUpload({ value, onChange, token, toast }) {
     e.target.value = '';
     setUploading(true);
 
-    const compressed = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new window.Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX = 600;
-          let w = img.width, h = img.height;
-          if (w > h && w > MAX) { h = (h * MAX) / w; w = MAX; }
-          else if (h > MAX) { w = (w * MAX) / h; h = MAX; }
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    try {
+      const compressed = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX = 600;
+            let w = img.width, h = img.height;
+            if (w > h && w > MAX) { h = (h * MAX) / w; w = MAX; }
+            else if (h > MAX) { w = (w * MAX) / h; h = MAX; }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob(resolve, 'image/jpeg', 0.82);
+          };
+          img.src = ev.target.result;
         };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
+        reader.readAsDataURL(file);
+      });
 
-    const fd = new FormData();
-    fd.append('file', compressed, 'photo.jpg');
-    const res = await fetch(`${BACKEND_URL}/api/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: fd,
-    });
-    const data = await res.json();
-    setUploading(false);
-    if (data.url) onChange(data.url);
-    else toast('Upload failed', 'error');
+      const fd = new FormData();
+      fd.append('file', compressed, 'photo.jpg');
+      const res = await fetch(`${BACKEND_URL}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      setUploading(false);
+      if (data.url) onChange(data.url);
+      else toast('Upload failed', 'error');
+    } catch {
+      setUploading(false);
+      toast('Upload failed', 'error');
+    }
   };
 
   return (
-    <div className="flex items-center gap-3">
-      {value && (
-        <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-[#c9a227]/20 bg-[#0a1628] shrink-0">
-          <Image src={value} alt="photo" fill unoptimized className="object-cover" />
-          <button type="button" onClick={() => onChange('')}
-            className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 rounded-full text-white/60 hover:text-white text-xs flex items-center justify-center leading-none">
-            ×
-          </button>
-        </div>
-      )}
-      <label className={`flex items-center justify-center gap-2 bg-[#c9a227]/8 border border-[#c9a227]/20 hover:bg-[#c9a227]/12 text-white/50 hover:text-white text-sm px-4 py-2.5 rounded-lg transition-colors cursor-pointer flex-1 ${uploading ? 'opacity-40 pointer-events-none' : ''}`}>
-        {uploading ? <Spinner size="sm" /> : <>{value ? 'Change Photo' : 'Upload Photo'}</>}
+    <div className="flex flex-col items-center justify-center">
+      {/* Circular Avatar */}
+      <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden border-[6px] border-[#ece4d0] shadow-md bg-[#f6f4ee] flex items-center justify-center relative">
+        {value ? (
+          <Image
+            src={value}
+            alt={playerName || 'Player photo'}
+            fill
+            unoptimized
+            className="object-cover"
+          />
+        ) : (
+          <svg className="w-20 h-20 text-[#c8bfab]" viewBox="0 0 80 80" fill="currentColor">
+            <circle cx="40" cy="26" r="14" />
+            <path d="M18 64 C18 48 26 44 40 44 C54 44 62 48 62 64 Z" />
+            <path d="M34 44 L40 52 L46 44 Z" fill="#b8af9b" />
+          </svg>
+        )}
+      </div>
+
+      {/* Pill Button: Change Photo */}
+      <label className={`bg-[#184832] hover:bg-[#205e42] active:scale-95 text-white text-xs font-semibold px-5 py-2 rounded-full mt-4 shadow-sm transition-all cursor-pointer flex items-center gap-1.5 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+        {uploading ? (
+          <Spinner size="sm" />
+        ) : (
+          <span>{value ? 'Change Photo' : 'Upload Photo'}</span>
+        )}
         <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
       </label>
+
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="text-[11px] text-[#9ca3af] hover:text-red-500 mt-1.5 transition-colors font-medium"
+        >
+          Remove Photo
+        </button>
+      )}
     </div>
   );
 }
@@ -256,15 +293,35 @@ export default function PlayersPageView({ sport = 'cricket' }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = () => { setForm({ ...emptyForm, sport }); setEditId(null); setShowModal(true); };
-  const openEdit = (player) => {
+  const openAdd = () => {
+    const defaultCat = isFootball ? 'Forward' : 'Batsman';
+    const defaultStyle = isFootball ? 'Right Footed' : 'Right Hand Bat';
     setForm({
-      name: player.name,
+      ...emptyForm,
+      category: defaultCat,
+      playingStyle: defaultStyle,
+      skills: [defaultCat, defaultStyle],
+      sport,
+    });
+    setEditId(null);
+    setShowModal(true);
+  };
+
+  const openEdit = (player) => {
+    const validCats = isFootball ? FOOTBALL_SKILLS : CRICKET_SKILLS;
+    const matchedCat = player.skills?.find(s => validCats.includes(s)) || (isFootball ? 'Forward' : 'Batsman');
+    const otherSkills = player.skills?.filter(s => s !== matchedCat) || [];
+    const initialStyle = otherSkills.join(', ') || (isFootball ? 'Right Footed' : 'Right Hand Bat');
+
+    setForm({
+      name: player.name || '',
       photo: player.photo || '',
-      skills: player.skills || [],
+      category: matchedCat,
+      playingStyle: initialStyle,
+      skills: player.skills?.length ? player.skills : [matchedCat],
       gender: player.gender || 'Male',
       basePrice: player.basePrice ?? 20,
-      status: player.status,
+      status: player.status || 'available',
       isMysteryPlayer: player.isMysteryPlayer || false,
       mysteryConfig: {
         roleHint: player.mysteryConfig?.roleHint || '',
@@ -282,10 +339,23 @@ export default function PlayersPageView({ sport = 'cricket' }) {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return toast('Player name required', 'warning');
-    if (!form.skills.length) return toast('At least one skill required', 'warning');
+    if (!form.name?.trim()) return toast('Player name is required', 'warning');
+    const cat = form.category || (isFootball ? 'Forward' : 'Batsman');
+    const style = form.playingStyle?.trim();
+    const finalSkills = [cat, style].filter(Boolean);
+
     setSaving(true);
-    const payload = { ...form, sport };
+    const payload = {
+      name: form.name.trim(),
+      photo: form.photo,
+      gender: form.gender || 'Male',
+      basePrice: Number(form.basePrice) || 20,
+      skills: finalSkills,
+      status: form.status || 'available',
+      isMysteryPlayer: form.isMysteryPlayer,
+      mysteryConfig: form.mysteryConfig,
+      sport,
+    };
     const res = editId
       ? await request(`/api/players/${editId}`, { method: 'PUT', body: JSON.stringify(payload) })
       : await request('/api/players', { method: 'POST', body: JSON.stringify(payload) });
@@ -489,116 +559,168 @@ export default function PlayersPageView({ sport = 'cricket' }) {
 
       {/* Edit / Add Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-6 w-full max-w-lg my-8">
-            <h2 className="text-base font-semibold text-white mb-5">{editId ? `Edit ${sportLabel} Player` : `Add ${sportLabel} Player`}</h2>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-              <div>
-                <label className="text-xs text-white/30 uppercase tracking-wider mb-1.5 block">Player Name</label>
-                <input
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Cristiano Ronaldo"
-                  className="w-full bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-gray-100 relative my-8">
+            {/* Header */}
+            <h2 className="text-xl font-bold text-[#111827] mb-6">
+              {editId ? `Edit ${sportLabel} Player` : 'Add New Player'}
+            </h2>
+
+            {/* 2-Column Body Layout */}
+            <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+              {/* Left Column: Circular Avatar & Change Photo */}
+              <div className="w-full sm:w-44 shrink-0 flex flex-col items-center justify-center pt-1">
+                <PhotoUpload
+                  value={form.photo}
+                  onChange={url => setForm(f => ({ ...f, photo: url }))}
+                  token={token}
+                  toast={toast}
+                  playerName={form.name}
                 />
               </div>
 
-              <div>
-                <label className="text-xs text-white/30 uppercase tracking-wider mb-1.5 block">Photo</label>
-                <PhotoUpload value={form.photo} onChange={url => setForm(f => ({ ...f, photo: url }))} token={token} toast={toast} />
-              </div>
-
-              <div>
-                <label className="text-xs text-white/30 uppercase tracking-wider mb-1.5 block">Skills / Position</label>
-                <div className="flex flex-wrap gap-2">
-                  {skillsList.map(s => {
-                    const active = form.skills.includes(s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => toggleSkill(s)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
-                          active
-                            ? 'bg-[#c9a227] text-[#0a1628] border-[#c9a227] font-bold'
-                            : 'bg-[#0a1628] text-white/50 border-white/10 hover:border-white/30'
-                        }`}>
-                        {s}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              {/* Right Column: Form Inputs */}
+              <div className="flex-1 w-full space-y-3.5">
+                {/* Player Name */}
                 <div>
-                  <label className="text-xs text-white/30 uppercase tracking-wider mb-1.5 block">Gender</label>
-                  <select
-                    value={form.gender}
-                    onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
-                    className="w-full bg-[#0a1628] border border-[#c9a227]/20 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1 block">
+                    Player Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder={isFootball ? 'e.g. Faisal Siddiqui' : 'e.g. Pravin'}
+                    className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3.5 py-2 text-sm text-[#111827] placeholder-[#9ca3af] focus:outline-none focus:border-[#184832] focus:ring-1 focus:ring-[#184832] transition-colors"
+                  />
                 </div>
+
+                {/* Category */}
                 <div>
-                  <label className="text-xs text-white/30 uppercase tracking-wider mb-1.5 block">Base Price (pts)</label>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1 block">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={form.category}
+                      onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                      className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3.5 py-2 text-sm text-[#111827] focus:outline-none focus:border-[#184832] focus:ring-1 focus:ring-[#184832] transition-colors appearance-none pr-9 cursor-pointer"
+                    >
+                      {skillsList.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#6b7280]">
+                      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor">
+                        <path d="M4 6L8 10L12 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1 block">
+                    Gender <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={form.gender}
+                      onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                      className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3.5 py-2 text-sm text-[#111827] focus:outline-none focus:border-[#184832] focus:ring-1 focus:ring-[#184832] transition-colors appearance-none pr-9 cursor-pointer"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#6b7280]">
+                      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor">
+                        <path d="M4 6L8 10L12 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Playing Style */}
+                <div>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1 block">
+                    Playing Style <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.playingStyle}
+                    onChange={e => setForm(f => ({ ...f, playingStyle: e.target.value }))}
+                    placeholder={isFootball ? 'e.g. Right Footed' : 'e.g. Right Hand Bat'}
+                    className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3.5 py-2 text-sm text-[#111827] placeholder-[#9ca3af] focus:outline-none focus:border-[#184832] focus:ring-1 focus:ring-[#184832] transition-colors"
+                  />
+                </div>
+
+                {/* Base Price (Points) */}
+                <div>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1 block">
+                    Base Price (Points) <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="number"
                     min="1"
                     value={form.basePrice}
                     onChange={e => setForm(f => ({ ...f, basePrice: Number(e.target.value) }))}
-                    className="w-full bg-[#c9a227]/8 border border-[#c9a227]/20 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none"
+                    className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3.5 py-2 text-sm text-[#111827] focus:outline-none focus:border-[#184832] focus:ring-1 focus:ring-[#184832] transition-colors"
                   />
                 </div>
-              </div>
 
-              {/* Mystery Player Toggle */}
-              <div className="border-t border-[#c9a227]/15 pt-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.isMysteryPlayer}
-                    onChange={e => setForm(f => ({ ...f, isMysteryPlayer: e.target.checked }))}
-                    className="w-4 h-4 rounded text-purple-600 focus:ring-0 bg-[#0a1628] border-white/20"
-                  />
-                  <div>
-                    <span className="text-sm font-semibold text-white">Mystery Player</span>
-                    <p className="text-white/30 text-xs">Identity is hidden from captains until revealed or sold</p>
-                  </div>
-                </label>
-
-                {form.isMysteryPlayer && (
-                  <div className="mt-4 p-4 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-3">
+                {/* Mystery Player Toggle */}
+                <div className="pt-2 border-t border-gray-100">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isMysteryPlayer}
+                      onChange={e => setForm(f => ({ ...f, isMysteryPlayer: e.target.checked }))}
+                      className="w-4 h-4 rounded text-purple-600 border-gray-300 focus:ring-0 cursor-pointer"
+                    />
                     <div>
-                      <label className="text-xs text-purple-300 uppercase tracking-wider mb-1 block">Role Hint</label>
-                      <RoleSelect
-                        roles={rolesList}
-                        value={form.mysteryConfig.roleHint}
-                        onChange={v => setForm(f => ({ ...f, mysteryConfig: { ...f.mysteryConfig, roleHint: v } }))}
-                      />
+                      <span className="text-xs font-semibold text-[#374151]">Mystery Player</span>
+                      <span className="text-[11px] text-[#6b7280] ml-2">Identity hidden until revealed or sold</span>
                     </div>
-                    <div>
-                      <label className="text-xs text-purple-300 uppercase tracking-wider mb-1 block">Rating Range</label>
-                      <input
-                        value={form.mysteryConfig.ratingRange}
-                        onChange={e => setForm(f => ({ ...f, mysteryConfig: { ...f.mysteryConfig, ratingRange: e.target.value } }))}
-                        placeholder="e.g. 80-90"
-                        className="w-full bg-[#0a1628] border border-purple-500/20 rounded-lg px-3 py-2 text-white text-sm"
-                      />
+                  </label>
+                  {form.isMysteryPlayer && (
+                    <div className="mt-3 p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2.5">
+                      <div>
+                        <label className="text-[11px] font-semibold text-purple-900 uppercase tracking-wider block mb-1">Role Hint</label>
+                        <input
+                          value={form.mysteryConfig.roleHint}
+                          onChange={e => setForm(f => ({ ...f, mysteryConfig: { ...f.mysteryConfig, roleHint: e.target.value } }))}
+                          placeholder="e.g. Star Batsman / Playmaker"
+                          className="w-full bg-white border border-purple-200 rounded-lg px-3 py-1.5 text-xs text-gray-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-purple-900 uppercase tracking-wider block mb-1">Rating Range</label>
+                        <input
+                          value={form.mysteryConfig.ratingRange}
+                          onChange={e => setForm(f => ({ ...f, mysteryConfig: { ...f.mysteryConfig, ratingRange: e.target.value } }))}
+                          placeholder="e.g. 80-90"
+                          className="w-full bg-white border border-purple-200 rounded-lg px-3 py-1.5 text-xs text-gray-800"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => { setShowModal(false); setEditId(null); }}
-                className="flex-1 bg-[#c9a227]/8 border border-[#c9a227]/20 text-white/50 py-2.5 rounded-lg text-sm hover:text-white transition-colors">
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => { setShowModal(false); setEditId(null); }}
+                className="bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[#374151] font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              >
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 bg-[#c9a227] text-[#0a1628] font-semibold py-2.5 rounded-lg text-sm hover:bg-[#f0c040] disabled:opacity-40 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-[#c59b27] hover:bg-[#d8aa2b] active:scale-[0.99] text-white font-semibold px-6 py-2.5 rounded-xl text-sm shadow-md shadow-[#c59b27]/25 transition-all flex items-center gap-2 disabled:opacity-50"
+              >
                 {saving ? <Spinner size="sm" /> : 'Save Player'}
               </button>
             </div>
