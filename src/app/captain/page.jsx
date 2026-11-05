@@ -70,54 +70,75 @@ export default function CaptainDashboard() {
     setLoading(false);
   }, [request, team?.sport, user?.sport]);
 
+  useEffect(() => {
+    if (!finalizingState) return;
+    const interval = setInterval(() => {
+      setFinalizingCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeout(() => loadData(), 600);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [finalizingState, loadData]);
+
   useEffect(() => { loadData(); }, [loadData]);
 
   // Socket setup
   useEffect(() => {
     if (!socket) return;
     const roomName = `auction:${captainSport}`;
+    socket.emit('join:sport', captainSport);
     socket.emit('joinRoom', { room: roomName, sport: captainSport });
 
     const handlePlayerNominated = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
-      setActiveSession(data.session);
-      setActivePlayer(data.player);
+      if (data?.sport && data.sport !== captainSport) return;
+      const s = data.session;
+      const p = data.player || s?.playerId;
+      setActiveSession(s);
+      setActivePlayer(p);
       setBidHistory([]);
       setFinalizingState(null);
       setFinalizingCountdown(0);
-      setTimer({ remaining: data.session.timerRemaining, paused: false });
+      setTimer({ remaining: s?.timerRemaining, paused: false });
     };
 
     const handleBidPlaced = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
+      if (data?.sport && data.sport !== captainSport) return;
+      const amount = data.amount ?? data.currentBid;
+      const teamId = data.teamId ?? data.bidderTeamId;
+      const teamName = data.teamName ?? data.bidderTeamName;
       setActiveSession(prev => prev ? {
         ...prev,
-        currentBid: data.amount,
-        currentHighestBidder: data.teamId,
-        currentHighestBidderName: data.teamName,
+        currentBid: amount,
+        currentHighestBidder: teamId,
+        currentHighestBidderName: teamName,
       } : prev);
       setBidHistory(prev => [{
-        teamName: data.teamName,
-        amount: data.amount,
+        teamName,
+        amount,
         createdAt: new Date().toISOString(),
       }, ...prev]);
       playBidSound();
     };
 
     const handleTimerTick = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
+      if (data?.sport && data.sport !== captainSport) return;
       setTimer({ remaining: data.remaining, paused: data.paused });
       if (data.remaining <= 3 && data.remaining > 0) playTimerUrgentSound();
     };
 
     const handleFinalizing = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
+      if (data?.sport && data.sport !== captainSport) return;
       setFinalizingState(data);
       setFinalizingCountdown(data.countdown || 3);
     };
 
     const handleFinalized = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
+      if (data?.sport && data.sport !== captainSport) return;
       setFinalizingState(null);
       setFinalizingCountdown(0);
       setActiveSession(null);
@@ -127,11 +148,15 @@ export default function CaptainDashboard() {
     };
 
     const handleSold = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
+      if (data?.sport && data.sport !== captainSport) return;
       playSoldSound();
-      toast(`SOLD to ${data.teamName} for ${data.amount} pts!`, 'success');
-      if (data.teamId === team?._id && data.player?.isMysteryPlayer) {
-        setRevealOverlayPlayer(data.player);
+      const teamName = data.teamName || data.team?.name || '';
+      const amount = data.amount ?? data.session?.currentBid ?? data.player?.soldPrice ?? 0;
+      const winningTeamId = data.teamId || data.team?._id;
+      const p = data.player || data.session?.playerId;
+      toast(`SOLD to ${teamName} for ${amount} pts!`, 'success');
+      if (winningTeamId === team?._id && p?.isMysteryPlayer) {
+        setRevealOverlayPlayer(p);
       }
       setActiveSession(null);
       setActivePlayer(null);
@@ -141,7 +166,7 @@ export default function CaptainDashboard() {
     };
 
     const handleUnsold = (data) => {
-      if (data.sport && data.sport !== captainSport) return;
+      if (data?.sport && data.sport !== captainSport) return;
       playUnsoldSound();
       toast('Player went UNSOLD', 'info');
       setActiveSession(null);
@@ -151,23 +176,49 @@ export default function CaptainDashboard() {
       loadData();
     };
 
+    socket.on('auction:start', handlePlayerNominated);
     socket.on('playerNominated', handlePlayerNominated);
+
+    socket.on('auction:bid_update', handleBidPlaced);
     socket.on('bidPlaced', handleBidPlaced);
+
+    socket.on('auction:timer', handleTimerTick);
     socket.on('timerTick', handleTimerTick);
+
+    socket.on('auction:finalizing', handleFinalizing);
     socket.on('auctionFinalizing', handleFinalizing);
-    socket.on('auctionFinalized', handleFinalized);
+
+    socket.on('auction:sold', handleSold);
     socket.on('playerSold', handleSold);
+
+    socket.on('auction:unsold', handleUnsold);
     socket.on('playerUnsold', handleUnsold);
+
+    socket.on('auctionFinalized', handleFinalized);
+    socket.on('auction:resale', () => loadData());
+    socket.on('teams:reset', () => loadData());
+    socket.on('team:token_added', (d) => {
+      if (d.teamId === team?._id) setTeam(prev => prev ? { ...prev, revealTokens: d.revealTokens } : prev);
+    });
 
     return () => {
       socket.emit('leaveRoom', { room: roomName, sport: captainSport });
+      socket.off('auction:start', handlePlayerNominated);
       socket.off('playerNominated', handlePlayerNominated);
+      socket.off('auction:bid_update', handleBidPlaced);
       socket.off('bidPlaced', handleBidPlaced);
+      socket.off('auction:timer', handleTimerTick);
       socket.off('timerTick', handleTimerTick);
+      socket.off('auction:finalizing', handleFinalizing);
       socket.off('auctionFinalizing', handleFinalizing);
-      socket.off('auctionFinalized', handleFinalized);
+      socket.off('auction:sold', handleSold);
       socket.off('playerSold', handleSold);
+      socket.off('auction:unsold', handleUnsold);
       socket.off('playerUnsold', handleUnsold);
+      socket.off('auctionFinalized', handleFinalized);
+      socket.off('auction:resale');
+      socket.off('teams:reset');
+      socket.off('team:token_added');
     };
   }, [socket, captainSport, team?._id, loadData, toast]);
 
@@ -185,6 +236,7 @@ export default function CaptainDashboard() {
         sessionId: activeSession._id,
         teamId: team._id,
         amount: nextBid,
+        bidAmount: increment,
         sport: captainSport,
       }),
     });
@@ -195,10 +247,16 @@ export default function CaptainDashboard() {
   const handleReveal = async () => {
     if (!activePlayer || revealing) return;
     setRevealing(true);
-    const res = await request(`/api/players/${activePlayer._id}/reveal`, {
+    let res = await request(`/api/players/${activePlayer._id}/reveal`, {
       method: 'POST',
       body: JSON.stringify({ teamId: team._id }),
     });
+    if (res?.error && res?.status === 404) {
+      res = await request('/api/auction/reveal', {
+        method: 'POST',
+        body: JSON.stringify({ playerId: activePlayer._id, teamId: team._id }),
+      });
+    }
     setRevealing(false);
     if (res?.error) toast(res.error, 'error');
     else if (res?.player) {

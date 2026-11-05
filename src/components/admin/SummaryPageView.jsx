@@ -46,7 +46,8 @@ function downloadPDF(teams, sportLabel) {
       const rows = (team.players || []).map((p, i) => [
         i + 1, p.name, p.skills?.join(', ') || '—', `${p.soldPrice} pts`,
       ]);
-      for (let i = rows.length; i < 7; i++) rows.push([i + 1, '— Empty slot —', '', '']);
+      const maxSquad = team.teamSize || 7;
+      for (let i = rows.length; i < maxSquad; i++) rows.push([i + 1, '— Empty slot —', '', '']);
 
       autoTable(doc, {
         startY: y,

@@ -67,13 +67,17 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setFinalizingCountdown(prev => {
         if (prev <= 1) {
           clearInterval(interval);
+          // Safety fallback: if socket event is delayed, auto-reload to ensure player is cleared
+          setTimeout(() => {
+            loadData();
+          }, 600);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [finalizingState]);
+  }, [finalizingState, loadData]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -81,13 +85,16 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   useEffect(() => {
     if (!socket) return;
     const roomName = `auction:${sport}`;
+    socket.emit('join:sport', sport);
     socket.emit('joinRoom', { room: roomName, sport });
 
     const handlePlayerNominated = (data) => {
-      if (data.sport && data.sport !== sport) return;
-      setActiveSession(data.session);
-      setActivePlayer(data.player);
-      setSelectedPlayer(data.player);
+      if (data?.sport && data.sport !== sport) return;
+      const s = data.session;
+      const p = data.player || s?.playerId;
+      setActiveSession(s);
+      setActivePlayer(p);
+      setSelectedPlayer(p);
       setBidHistory([]);
       setFinalizingState(null);
       setFinalizingCountdown(0);
@@ -95,74 +102,103 @@ export default function AuctionControlView({ sport = 'cricket' }) {
     };
 
     const handleBidPlaced = (data) => {
-      if (data.sport && data.sport !== sport) return;
+      if (data?.sport && data.sport !== sport) return;
+      const amount = data.amount ?? data.currentBid;
+      const teamId = data.teamId ?? data.bidderTeamId;
+      const teamName = data.teamName ?? data.bidderTeamName;
       setActiveSession(prev => prev ? {
         ...prev,
-        currentBid: data.amount,
-        currentHighestBidder: data.teamId,
-        currentHighestBidderName: data.teamName,
+        currentBid: amount,
+        currentHighestBidder: teamId,
+        currentHighestBidderName: teamName,
       } : prev);
       setBidHistory(prev => [{
-        teamName: data.teamName,
-        amount: data.amount,
+        teamName,
+        amount,
         createdAt: new Date().toISOString(),
       }, ...prev]);
     };
 
     const handleFinalizing = (data) => {
-      if (data.sport && data.sport !== sport) return;
+      if (data?.sport && data.sport !== sport) return;
       setFinalizingState(data);
       setFinalizingCountdown(data.countdown || 3);
     };
 
-    const handleFinalized = (data) => {
-      if (data.sport && data.sport !== sport) return;
+    const handleSold = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      const teamName = data.teamName || data.team?.name || 'winning team';
+      const amount = data.amount ?? data.session?.currentBid ?? data.player?.soldPrice ?? '';
+      toast(`Player SOLD to ${teamName} for ${amount} pts!`, 'success');
+      setActiveSession(null);
+      setActivePlayer(null);
+      setSelectedPlayer(null);
+      setBidHistory([]);
       setFinalizingState(null);
       setFinalizingCountdown(0);
-      setActiveSession(null);
-      setActivePlayer(null);
-      setSelectedPlayer(null);
-      setBidHistory([]);
-      loadData();
-    };
-
-    const handleSold = (data) => {
-      if (data.sport && data.sport !== sport) return;
-      toast(`Player SOLD to ${data.teamName} for ${data.amount} pts!`, 'success');
-      setActiveSession(null);
-      setActivePlayer(null);
-      setSelectedPlayer(null);
-      setBidHistory([]);
-      setFinalizingState(null);
       loadData();
     };
 
     const handleUnsold = (data) => {
-      if (data.sport && data.sport !== sport) return;
+      if (data?.sport && data.sport !== sport) return;
       toast('Player marked UNSOLD', 'info');
       setActiveSession(null);
       setActivePlayer(null);
       setSelectedPlayer(null);
       setBidHistory([]);
       setFinalizingState(null);
+      setFinalizingCountdown(0);
       loadData();
     };
 
+    const handleFinalized = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      setActiveSession(null);
+      setActivePlayer(null);
+      setSelectedPlayer(null);
+      setBidHistory([]);
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+      loadData();
+    };
+
+    socket.on('auction:start', handlePlayerNominated);
     socket.on('playerNominated', handlePlayerNominated);
+
+    socket.on('auction:bid_update', handleBidPlaced);
     socket.on('bidPlaced', handleBidPlaced);
+
+    socket.on('auction:finalizing', handleFinalizing);
     socket.on('auctionFinalizing', handleFinalizing);
-    socket.on('auctionFinalized', handleFinalized);
+
+    socket.on('auction:sold', handleSold);
     socket.on('playerSold', handleSold);
+
+    socket.on('auction:unsold', handleUnsold);
     socket.on('playerUnsold', handleUnsold);
+
+    socket.on('auctionFinalized', handleFinalized);
+
+    socket.on('players:updated', () => loadData());
+    socket.on('auction:resale', () => loadData());
+    socket.on('teams:reset', () => loadData());
 
     return () => {
       socket.emit('leaveRoom', { room: roomName, sport });
+      socket.off('auction:start', handlePlayerNominated);
       socket.off('playerNominated', handlePlayerNominated);
+      socket.off('auction:bid_update', handleBidPlaced);
       socket.off('bidPlaced', handleBidPlaced);
+      socket.off('auction:finalizing', handleFinalizing);
       socket.off('auctionFinalizing', handleFinalizing);
-      socket.off('auctionFinalized', handleFinalized);
+      socket.off('auction:sold', handleSold);
       socket.off('playerSold', handleSold);
+      socket.off('auction:unsold', handleUnsold);
       socket.off('playerUnsold', handleUnsold);
+      socket.off('auctionFinalized', handleFinalized);
+      socket.off('players:updated');
+      socket.off('auction:resale');
+      socket.off('teams:reset');
     };
   }, [socket, sport, loadData, toast]);
 
@@ -194,9 +230,20 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       body: JSON.stringify({ sessionId: activeSession._id, sport }),
     });
     setActionLoading(false);
-    if (res?.error) toast(res.error, 'error');
-    else {
+    if (res?.error) {
+      toast(res.error, 'error');
+    } else {
       toast('Finalizing 3-second countdown initiated...', 'info');
+      if (res?.session) {
+        setActiveSession(res.session);
+        setFinalizingState({
+          sessionId: res.session._id,
+          action: 'sold',
+          leaderTeamName: res.session.currentHighestBidderName,
+          winningBid: res.session.currentBid,
+        });
+        setFinalizingCountdown(res.countdown || 3);
+      }
     }
   };
 
@@ -208,9 +255,18 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       body: JSON.stringify({ sessionId: activeSession._id, sport }),
     });
     setActionLoading(false);
-    if (res?.error) toast(res.error, 'error');
-    else {
+    if (res?.error) {
+      toast(res.error, 'error');
+    } else {
       toast('Finalizing unsold...', 'info');
+      if (res?.session) {
+        setActiveSession(res.session);
+        setFinalizingState({
+          sessionId: res.session._id,
+          action: 'unsold',
+        });
+        setFinalizingCountdown(res.countdown || 3);
+      }
     }
   };
 

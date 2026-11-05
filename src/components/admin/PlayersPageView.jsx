@@ -661,7 +661,11 @@ export default function PlayersPageView({ sport = 'cricket' }) {
                     type="number"
                     min="1"
                     value={form.basePrice}
-                    onChange={e => setForm(f => ({ ...f, basePrice: Number(e.target.value) }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setForm(f => ({ ...f, basePrice: val === '' ? '' : Math.max(1, Number(val)) }));
+                    }}
+                    placeholder="20"
                     className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3.5 py-2 text-sm text-[#111827] focus:outline-none focus:border-[#184832] focus:ring-1 focus:ring-[#184832] transition-colors"
                   />
                 </div>

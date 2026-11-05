@@ -202,8 +202,8 @@ export default function TeamsPageView({ sport = 'cricket' }) {
     setSaving(true);
     const payload = {
       ...form,
-      budget: Number(form.budget),
-      teamSize: Math.max(1, Number(form.teamSize) || 7),
+      budget: form.budget === '' ? 1000 : Math.max(0, Number(form.budget) || 0),
+      teamSize: form.teamSize === '' ? 7 : Math.max(1, Number(form.teamSize) || 7),
       sport,
     };
     const res = editId
@@ -280,6 +280,30 @@ export default function TeamsPageView({ sport = 'cricket' }) {
         if (res?.error) toast(res.error, 'error');
         else {
           toast(`${team.name} has been reset to starting state`, 'success');
+          load();
+        }
+      },
+    });
+  };
+
+  const handleDeleteTeam = (team) => {
+    setConfirmModal({
+      title: `Delete ${team.name}?`,
+      message: `Are you sure you want to permanently delete ${team.name}? All acquired players will be returned to the auction pool as available and assigned captain credentials will be unlinked. This action cannot be undone.`,
+      confirmText: 'Delete Team',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const res = await request(`/api/teams/${team._id}`, { method: 'DELETE' });
+        if (res?.error) {
+          toast(res.error, 'error');
+        } else {
+          toast(`Team ${team.name} deleted`, 'success');
+          if (detailTeam?._id === team._id) setDetailTeam(null);
+          if (editId === team._id) {
+            setShowForm(false);
+            setEditId(null);
+          }
           load();
         }
       },
@@ -465,39 +489,52 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                         </div>
 
                         {/* Card actions */}
-                        <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-gray-100">
+                        <div className="pt-2 border-t border-gray-100 flex flex-col gap-1.5">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDetailTeam(team);
                             }}
-                            className="col-span-2 text-xs py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1 bg-[#f4efe6] text-[#0d3a24] hover:bg-[#0d3a24] hover:text-white"
+                            className="w-full text-xs py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1.5 bg-[#f4efe6] text-[#0d3a24] hover:bg-[#0d3a24] hover:text-white"
                           >
                             <span>Squad</span>
-                            <span className="text-[10px]">({count})</span>
+                            <span className="text-[10px]">({count}/{maxPlayers})</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEdit(team);
-                            }}
-                            className="text-xs text-[#4b5563] hover:text-[#111827] bg-white border border-[#e8e2d5] hover:bg-stone-50 py-1.5 rounded-lg transition-colors font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleResetTeam(team);
-                            }}
-                            className="text-xs text-[#c59b27] hover:text-[#916922] bg-white border border-[#e8e2d5] hover:bg-amber-50/50 py-1.5 rounded-lg transition-colors font-medium"
-                            title="Reset team to initial budget"
-                          >
-                            Reset
-                          </button>
+                          <div className="grid grid-cols-3 gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEdit(team);
+                              }}
+                              className="text-xs text-[#4b5563] hover:text-[#111827] bg-white border border-[#e8e2d5] hover:bg-stone-50 py-1 rounded-lg transition-colors font-medium text-center"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResetTeam(team);
+                              }}
+                              className="text-xs text-[#c59b27] hover:text-[#916922] bg-white border border-[#e8e2d5] hover:bg-amber-50/50 py-1 rounded-lg transition-colors font-medium text-center"
+                              title="Reset team to initial budget"
+                            >
+                              Reset
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteTeam(team);
+                              }}
+                              className="text-xs text-red-600 hover:text-white hover:bg-red-600 bg-white border border-red-200 py-1 rounded-lg transition-all font-medium text-center"
+                              title="Delete this team"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -675,6 +712,17 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                 >
                   Reset Team
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = detailTeam;
+                    setDetailTeam(null);
+                    handleDeleteTeam(t);
+                  }}
+                  className="bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-bold px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                >
+                  Delete Team
+                </button>
               </div>
               <button
                 type="button"
@@ -736,7 +784,11 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                     type="number"
                     min="0"
                     value={form.budget}
-                    onChange={e => setForm(f => ({ ...f, budget: Number(e.target.value) }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setForm(f => ({ ...f, budget: val === '' ? '' : Math.max(0, Number(val)) }));
+                    }}
+                    placeholder="1000"
                     className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-[#111827] text-sm focus:outline-none focus:border-[#0d3a24] shadow-sm transition-colors"
                   />
                 </div>
@@ -746,8 +798,12 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                     type="number"
                     min="1"
                     max="50"
-                    value={form.teamSize ?? 7}
-                    onChange={e => setForm(f => ({ ...f, teamSize: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    value={form.teamSize}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setForm(f => ({ ...f, teamSize: val === '' ? '' : Math.max(1, Number(val)) }));
+                    }}
+                    placeholder="7"
                     className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-[#111827] text-sm focus:outline-none focus:border-[#0d3a24] shadow-sm transition-colors"
                   />
                 </div>
@@ -756,6 +812,18 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             </div>
 
             <div className="flex gap-3 mt-6 pt-2">
+              {editId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const teamToDelete = teams.find(t => t._id === editId);
+                    if (teamToDelete) handleDeleteTeam(teamToDelete);
+                  }}
+                  className="bg-white hover:bg-red-50 text-red-600 border border-red-200 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors"
+                >
+                  Delete
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setEditId(null); }}
@@ -854,7 +922,9 @@ export default function TeamsPageView({ sport = 'cricket' }) {
               <button
                 type="button"
                 onClick={confirmModal.onConfirm}
-                className="flex-1 bg-[#0d3a24] hover:bg-[#154d32] text-white font-semibold py-2.5 rounded-xl text-sm shadow-md transition-all"
+                className={`flex-1 text-white font-semibold py-2.5 rounded-xl text-sm shadow-md transition-all ${
+                  confirmModal.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0d3a24] hover:bg-[#154d32]'
+                }`}
               >
                 {confirmModal.confirmText || 'Confirm'}
               </button>
