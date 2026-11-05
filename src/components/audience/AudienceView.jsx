@@ -55,6 +55,54 @@ function FootballPitchLines() {
   );
 }
 
+// Cricket ground & 22-yard pitch line markings watermark
+function CricketFieldLines() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center opacity-30 select-none">
+      <svg
+        className="w-full h-full max-w-6xl max-h-[85vh] text-[#c9a227]/25"
+        viewBox="0 0 1000 600"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        {/* Outer boundary rope (oval) */}
+        <ellipse cx="500" cy="300" rx="460" ry="260" />
+
+        {/* 30-yard inner circle */}
+        <ellipse cx="500" cy="300" rx="330" ry="185" strokeDasharray="8 6" strokeWidth="1.5" />
+
+        {/* Central 22-yard pitch strip */}
+        <rect x="465" y="195" width="70" height="210" rx="3" strokeWidth="1.5" />
+
+        {/* Pitch crease marks - Top (North wicket) */}
+        <line x1="440" y1="235" x2="560" y2="235" strokeWidth="1.5" />
+        <line x1="455" y1="215" x2="545" y2="215" strokeWidth="1.5" />
+        <line x1="455" y1="215" x2="455" y2="245" strokeWidth="1.2" />
+        <line x1="545" y1="215" x2="545" y2="245" strokeWidth="1.2" />
+        {/* Top 3 Stumps */}
+        <circle cx="493" cy="215" r="2.5" fill="currentColor" />
+        <circle cx="500" cy="215" r="2.5" fill="currentColor" />
+        <circle cx="507" cy="215" r="2.5" fill="currentColor" />
+
+        {/* Pitch crease marks - Bottom (South wicket) */}
+        <line x1="440" y1="365" x2="560" y2="365" strokeWidth="1.5" />
+        <line x1="455" y1="385" x2="545" y2="385" strokeWidth="1.5" />
+        <line x1="455" y1="355" x2="455" y2="385" strokeWidth="1.2" />
+        <line x1="545" y1="355" x2="545" y2="385" strokeWidth="1.2" />
+        {/* Bottom 3 Stumps */}
+        <circle cx="493" cy="385" r="2.5" fill="currentColor" />
+        <circle cx="500" cy="385" r="2.5" fill="currentColor" />
+        <circle cx="507" cy="385" r="2.5" fill="currentColor" />
+
+        {/* Sight screens */}
+        <line x1="465" y1="24" x2="535" y2="24" strokeWidth="3" strokeLinecap="round" />
+        <line x1="465" y1="576" x2="535" y2="576" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
 // Position badge helper for football
 function PositionPill({ skill, isFootball }) {
   if (!isFootball) return <SkillBadge skill={skill} />;
@@ -333,8 +381,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
 
   return (
     <div className={`h-screen max-h-screen ${pageBg} text-white flex flex-col overflow-hidden relative font-sans transition-colors duration-300`}>
-      {/* Background Stadium Glow & Watermark (Only for Football) */}
-      {isFootball && (
+      {/* Background Stadium Glow & Watermark (Cricket & Football) */}
+      {isFootball ? (
         <>
           <div
             className="absolute inset-0 pointer-events-none"
@@ -343,6 +391,16 @@ export default function AudienceView({ initialSport = 'cricket' }) {
             }}
           />
           <FootballPitchLines />
+        </>
+      ) : (
+        <>
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 70% 45% at 50% 0%, rgba(201, 162, 39, 0.14) 0%, rgba(10, 22, 40, 0) 80%)'
+            }}
+          />
+          <CricketFieldLines />
         </>
       )}
 
