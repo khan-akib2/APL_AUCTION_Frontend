@@ -38,7 +38,7 @@ function downloadPDF(teams, sportLabel) {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text(
-        `Captain: ${team.captainId?.name || 'N/A'}   |   Budget left: ${team.budget} pts   |   Spent: ${team.pointsSpent} pts   |   Players: ${team.playerCount}/7`,
+        `Captain: ${team.captainId?.name || 'N/A'}   |   Budget left: ${team.budget} pts   |   Spent: ${team.pointsSpent} pts   |   Players: ${team.playerCount || 0}/${team.teamSize || 7}`,
         W - 14, y + 6.5, { align: 'right' }
       );
       y += 13;
@@ -130,7 +130,7 @@ export default function SummaryPageView({ sport = 'cricket' }) {
                   <div className="text-[#c59b27] font-black text-lg tabular-nums">
                     {team.budget} <span className="text-xs font-normal text-[#6b7280]">pts left</span>
                   </div>
-                  <div className="text-[#6b7280] text-xs mt-0.5">{team.pointsSpent} pts spent · {team.playerCount}/7</div>
+                  <div className="text-[#6b7280] text-xs mt-0.5">{team.pointsSpent} pts spent · {team.playerCount || 0}/{team.teamSize || 7}</div>
                 </div>
               </div>
 

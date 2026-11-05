@@ -6,8 +6,10 @@ import { useToast } from '@/components/Toast';
 import Spinner from '@/components/Spinner';
 import Image from 'next/image';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
+import SkillBadge from '@/components/SkillBadge';
+import { displaySkills } from '@/lib/skills';
 
-const emptyForm = { name: '', captainId: '', budget: 1000, logo: '' };
+const emptyForm = { name: '', captainId: '', budget: 1000, teamSize: 7, logo: '' };
 
 function CaptainSelect({ captains, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -140,13 +142,15 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const [teams, setTeams] = useState([]);
   const [captains, setCaptains] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
+
+  // Dedicated Team Detail / Squad Modal
+  const [detailTeam, setDetailTeam] = useState(null);
 
   // Quick-create captain modal state
   const [showCaptainModal, setShowCaptainModal] = useState(false);
@@ -164,16 +168,31 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       request(`/api/teams?sport=${sport}`),
       request(`/api/users?sport=${sport}`),
     ]);
-    if (tRes) setTeams((tRes.teams || []).map(t => ({ ...t, _id: t._id?.toString() || t._id })));
+    if (tRes) {
+      const mapped = (tRes.teams || []).map(t => ({ ...t, _id: t._id?.toString() || t._id }));
+      setTeams(mapped);
+      setDetailTeam(prev => prev ? mapped.find(m => m._id === prev._id) || null : null);
+    }
     if (uRes) setCaptains(uRes.users || []);
     setLoading(false);
   }, [request, sport]);
 
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = () => { setForm({ ...emptyForm, budget: 1000 }); setEditId(null); setShowForm(true); };
+  const openAdd = () => {
+    setForm({ ...emptyForm, budget: 1000, teamSize: 7 });
+    setEditId(null);
+    setShowForm(true);
+  };
+
   const openEdit = (team) => {
-    setForm({ name: team.name, captainId: team.captainId?._id || '', budget: team.budget ?? 1000, logo: team.logo || '' });
+    setForm({
+      name: team.name,
+      captainId: team.captainId?._id || '',
+      budget: team.budget ?? 1000,
+      teamSize: team.teamSize ?? 7,
+      logo: team.logo || '',
+    });
     setEditId(team._id);
     setShowForm(true);
   };
@@ -181,14 +200,21 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const handleSave = async () => {
     if (!form.name.trim()) return toast('Team name required', 'warning');
     setSaving(true);
-    const payload = { ...form, sport };
+    const payload = {
+      ...form,
+      budget: Number(form.budget),
+      teamSize: Math.max(1, Number(form.teamSize) || 7),
+      sport,
+    };
     const res = editId
       ? await request(`/api/teams/${editId}`, { method: 'PUT', body: JSON.stringify(payload) })
       : await request('/api/teams', { method: 'POST', body: JSON.stringify(payload) });
     setSaving(false);
     if (res?.error) { toast(res.error, 'error'); return; }
     toast(editId ? 'Team updated' : 'Team created', 'success');
-    setShowForm(false); setForm(emptyForm); setEditId(null);
+    setShowForm(false);
+    setForm(emptyForm);
+    setEditId(null);
     load();
   };
 
@@ -269,7 +295,21 @@ export default function TeamsPageView({ sport = 'cricket' }) {
         setConfirmModal(null);
         const res = await request(`/api/teams/${teamId}/remove-player/${playerId}`, { method: 'POST' });
         if (res?.error) toast(res.error, 'error');
-        else { toast(`${playerName} removed — ${res.refund} pts refunded`, 'success'); load(); }
+        else {
+          toast(`${playerName} removed — ${res.refund} pts refunded`, 'success');
+          setDetailTeam(prev => {
+            if (!prev || prev._id !== teamId) return prev;
+            const updated = (prev.players || []).filter(p => p._id !== playerId);
+            return {
+              ...prev,
+              players: updated,
+              playerCount: Math.max(0, (prev.playerCount || updated.length + 1) - 1),
+              budget: (prev.budget || 0) + (res.refund || 0),
+              pointsSpent: Math.max(0, (prev.pointsSpent || 0) - (res.refund || 0)),
+            };
+          });
+          load();
+        }
       },
     });
   };
@@ -280,21 +320,8 @@ export default function TeamsPageView({ sport = 'cricket' }) {
     else {
       toast(`+1 reveal token → ${teamName}`, 'success');
       setTeams(prev => prev.map(t => t._id === teamId ? { ...t, revealTokens: (t.revealTokens || 0) + 1 } : t));
+      setDetailTeam(prev => prev && prev._id === teamId ? { ...prev, revealTokens: (prev.revealTokens || 0) + 1 } : prev);
     }
-  };
-
-  const handleDelete = (id) => {
-    setConfirmModal({
-      title: 'Delete Team',
-      message: 'Delete this team? This will unlink the captain.',
-      confirmText: 'Delete',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        const res = await request(`/api/teams/${id}`, { method: 'DELETE' });
-        if (res?.error) toast(res.error, 'error');
-        else { toast('Team deleted', 'success'); load(); }
-      },
-    });
   };
 
   if (loading) return (
@@ -368,14 +395,17 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {teams.map(team => {
-                  const isExpanded = expanded === team._id;
-                  const pct = Math.round(((team.pointsSpent || 0) / (team.initialBudget || 1000)) * 100);
-                  const maxPlayers = 7;
+                  const maxPlayers = team.teamSize || 7;
                   const count = team.playerCount ?? team.players?.length ?? 0;
+                  const totalPurse = team.initialBudget || 1000;
+                  const pct = Math.round(((team.pointsSpent || 0) / totalPurse) * 100);
+
                   return (
                     <div
                       key={team._id}
-                      className="border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between bg-white"
+                      onClick={() => setDetailTeam(team)}
+                      className="border border-[#e8e2d5] hover:border-[#0d3a24] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between bg-white cursor-pointer group"
+                      title="Click to view full team information and squad"
                     >
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3 mb-3">
@@ -390,7 +420,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                               </div>
                             )}
                             <div className="min-w-0">
-                              <h3 className="text-[#111827] font-bold text-sm truncate">{team.name}</h3>
+                              <h3 className="text-[#111827] font-bold text-sm truncate group-hover:text-[#0d3a24] transition-colors">{team.name}</h3>
                               <p className="text-[#6b7280] text-xs truncate">
                                 {team.captainId?.name || <span className="text-[#9ca3af] italic">No captain</span>}
                               </p>
@@ -423,7 +453,11 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                             Reveal tokens: <strong>{team.revealTokens ?? 1}</strong>
                           </span>
                           <button
-                            onClick={() => handleAddToken(team._id, team.name)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToken(team._id, team.name);
+                            }}
                             className="text-[11px] text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-lg transition-colors font-semibold"
                           >
                             + Token
@@ -433,24 +467,32 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                         {/* Card actions */}
                         <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-gray-100">
                           <button
-                            onClick={() => setExpanded(isExpanded ? null : team._id)}
-                            className={`col-span-2 text-xs py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1 ${
-                              isExpanded
-                                ? 'bg-[#0d3a24] text-white shadow-sm'
-                                : 'bg-[#f4efe6] text-[#0d3a24] hover:bg-[#eae3d5]'
-                            }`}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDetailTeam(team);
+                            }}
+                            className="col-span-2 text-xs py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1 bg-[#f4efe6] text-[#0d3a24] hover:bg-[#0d3a24] hover:text-white"
                           >
                             <span>Squad</span>
                             <span className="text-[10px]">({count})</span>
                           </button>
                           <button
-                            onClick={() => openEdit(team)}
-                            className="text-xs text-[#4b5563] hover:text-[#111827] bg-white border border-[#e8e2d5] hover:bg-stone-50 py-1.5 rounded-lg transition-colors"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(team);
+                            }}
+                            className="text-xs text-[#4b5563] hover:text-[#111827] bg-white border border-[#e8e2d5] hover:bg-stone-50 py-1.5 rounded-lg transition-colors font-medium"
                           >
                             Edit
                           </button>
                           <button
-                            onClick={() => handleResetTeam(team)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleResetTeam(team);
+                            }}
                             className="text-xs text-[#c59b27] hover:text-[#916922] bg-white border border-[#e8e2d5] hover:bg-amber-50/50 py-1.5 rounded-lg transition-colors font-medium"
                             title="Reset team to initial budget"
                           >
@@ -458,29 +500,6 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                           </button>
                         </div>
                       </div>
-
-                      {/* Expanded Squad Drawer */}
-                      {isExpanded && team.players !== undefined && (
-                        <div className="border-t border-[#e8e2d5] bg-[#faf8f5] p-3 space-y-1.5 max-h-48 overflow-y-auto rounded-b-2xl">
-                          {team.players?.length === 0 && (
-                            <p className="text-[#9ca3af] text-xs text-center py-3">No players yet</p>
-                          )}
-                          {team.players?.map(p => (
-                            <div key={p._id} className="flex items-center justify-between bg-white border border-[#e8e2d5] rounded-xl px-3 py-2 gap-2 shadow-sm">
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[#111827] text-xs font-semibold truncate block">{p.name}</span>
-                                <span className="text-[#c59b27] text-[10px] font-bold">{p.soldPrice} pts</span>
-                              </div>
-                              <button
-                                onClick={() => handleRemovePlayer(team._id, p._id, p.name, p.soldPrice)}
-                                className="shrink-0 text-[10px] text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2 py-1 rounded-lg transition-colors font-semibold"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -489,6 +508,185 @@ export default function TeamsPageView({ sport = 'cricket' }) {
           </div>
         </div>
       </div>
+
+      {/* Team Detail / Full Squad Modal */}
+      {detailTeam && (
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[90vh] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-fade-in">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#e8e2d5] shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                {detailTeam.logo ? (
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-[#e8e2d5] bg-[#faf8f5] shrink-0 p-1">
+                    <Image src={detailTeam.logo} alt={detailTeam.name} fill unoptimized className="object-contain p-1" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl border border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-center shrink-0">
+                    <span className="text-2xl font-black text-[#0d3a24]">{detailTeam.name[0]}</span>
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#111827] truncate">
+                      {detailTeam.name}
+                    </h2>
+                    <span className="inline-flex items-center gap-1 bg-[#f4efe6] border border-[#e8e2d5] px-2.5 py-0.5 rounded-full text-xs font-bold text-[#0d3a24]">
+                      {isFootball ? <FootballIcon className="w-3.5 h-3.5 text-[#0d3a24]" /> : <CricketIcon className="w-3.5 h-3.5 text-[#c59b27]" />}
+                      {sportLabel}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#6b7280]">
+                    Captain:{' '}
+                    {detailTeam.captainId?.name ? (
+                      <strong className="text-[#111827] font-semibold">{detailTeam.captainId.name} ({detailTeam.captainId.email})</strong>
+                    ) : (
+                      <span className="italic text-[#9ca3af]">No captain assigned</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailTeam(null)}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-[#4b5563] flex items-center justify-center transition-colors shrink-0 text-base font-bold"
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4 shrink-0">
+              <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center">
+                <span className="text-[#6b7280] text-[10px] uppercase font-bold tracking-wider block">Purse Left</span>
+                <span className="text-xl sm:text-2xl font-black text-[#0d3a24] tabular-nums block">{detailTeam.budget}</span>
+                <span className="text-[#9ca3af] text-[10px]">pts remaining</span>
+              </div>
+              <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center">
+                <span className="text-[#6b7280] text-[10px] uppercase font-bold tracking-wider block">Points Spent</span>
+                <span className="text-xl sm:text-2xl font-black text-[#c59b27] tabular-nums block">{detailTeam.pointsSpent || 0}</span>
+                <span className="text-[#9ca3af] text-[10px]">pts used</span>
+              </div>
+              <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center">
+                <span className="text-[#6b7280] text-[10px] uppercase font-bold tracking-wider block">Squad Capacity</span>
+                <span className="text-xl sm:text-2xl font-black text-[#111827] tabular-nums block">
+                  {detailTeam.players?.length || detailTeam.playerCount || 0} / {detailTeam.teamSize || 7}
+                </span>
+                <span className="text-[#9ca3af] text-[10px]">players signed</span>
+              </div>
+              <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center flex flex-col justify-between">
+                <div>
+                  <span className="text-purple-700 text-[10px] uppercase font-bold tracking-wider block">Tokens</span>
+                  <span className="text-xl sm:text-2xl font-black text-purple-700 tabular-nums block">{detailTeam.revealTokens ?? 1}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddToken(detailTeam._id, detailTeam.name)}
+                  className="mt-1 text-[10px] text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg py-0.5 font-bold transition-colors"
+                >
+                  + Add Token
+                </button>
+              </div>
+            </div>
+
+            {/* Squad List Section */}
+            <div className="flex-1 overflow-y-auto pr-1 min-h-[160px]">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs uppercase font-bold tracking-wider text-[#6b7280]">
+                  Signed Squad Members ({detailTeam.players?.length || 0} / {detailTeam.teamSize || 7})
+                </h3>
+              </div>
+
+              {!detailTeam.players || detailTeam.players.length === 0 ? (
+                <div className="text-center py-10 bg-[#faf8f5] rounded-2xl border border-dashed border-[#e8e2d5] p-6">
+                  <div className="w-10 h-10 rounded-full bg-white border border-[#e8e2d5] flex items-center justify-center mx-auto mb-2 text-[#9ca3af]">
+                    —
+                  </div>
+                  <p className="text-sm font-semibold text-[#111827]">No players acquired yet</p>
+                  <p className="text-xs text-[#6b7280] mt-1">Players won in the live auction or assigned to this team will be shown here.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {detailTeam.players.map(p => (
+                    <div
+                      key={p._id}
+                      className="flex items-center justify-between bg-white border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl px-3.5 py-2.5 shadow-xs transition-all"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {p.photo ? (
+                          <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-[#e8e2d5] bg-[#faf8f5] shrink-0">
+                            <Image src={p.photo} alt={p.name} fill unoptimized className="object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl border border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-center shrink-0 text-xs font-bold text-[#0d3a24]">
+                            {p.name?.[0] || 'P'}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-[#111827] truncate">{p.name}</h4>
+                          <div className="flex gap-1 mt-0.5">
+                            {displaySkills(p.skills || []).slice(0, 2).map(s => <SkillBadge key={s} skill={s} />)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className="text-sm font-black text-[#0d3a24] tabular-nums block">{p.soldPrice} pts</span>
+                          <span className="text-[10px] text-[#9ca3af] block">sold price</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePlayer(detailTeam._id, p._id, p.name, p.soldPrice)}
+                          className="text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-xl transition-colors font-bold"
+                          title="Remove player from squad and refund points"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-4 mt-3 border-t border-[#e8e2d5] shrink-0 gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = detailTeam;
+                    setDetailTeam(null);
+                    openEdit(t);
+                  }}
+                  className="bg-white border border-[#e8e2d5] hover:bg-stone-50 text-[#111827] text-xs font-bold px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                >
+                  Edit Team Settings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = detailTeam;
+                    setDetailTeam(null);
+                    handleResetTeam(t);
+                  }}
+                  className="bg-white border border-amber-200 hover:bg-amber-50/50 text-[#c59b27] text-xs font-bold px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                >
+                  Reset Team
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailTeam(null)}
+                className="bg-[#0d3a24] hover:bg-[#154d32] text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Team Modal */}
       {showForm && (
@@ -499,7 +697,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">Team Name</label>
+                <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">Team Name *</label>
                 <input
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -507,10 +705,12 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                   className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-[#111827] text-sm focus:outline-none focus:border-[#0d3a24] shadow-sm transition-colors"
                 />
               </div>
+
               <div>
                 <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">Team Logo</label>
                 <LogoUpload value={form.logo} onChange={url => setForm(f => ({ ...f, logo: url }))} token={token} toast={toast} />
               </div>
+
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-[#4b5563] block">Assign Captain</label>
@@ -528,26 +728,43 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                   onChange={val => setForm(f => ({ ...f, captainId: val }))}
                 />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">Budget (points)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.budget}
-                  onChange={e => setForm(f => ({ ...f, budget: Number(e.target.value) }))}
-                  className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-[#111827] text-sm focus:outline-none focus:border-[#0d3a24] shadow-sm transition-colors"
-                />
-                <p className="text-[#6b7280] text-xs mt-1">Starting purse allocated to this team</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">Budget (pts) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.budget}
+                    onChange={e => setForm(f => ({ ...f, budget: Number(e.target.value) }))}
+                    className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-[#111827] text-sm focus:outline-none focus:border-[#0d3a24] shadow-sm transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">Team Size *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={form.teamSize ?? 7}
+                    onChange={e => setForm(f => ({ ...f, teamSize: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-[#111827] text-sm focus:outline-none focus:border-[#0d3a24] shadow-sm transition-colors"
+                  />
+                </div>
               </div>
+              <p className="text-[#6b7280] text-xs">Maximum squad capacity and starting points purse for this team.</p>
             </div>
+
             <div className="flex gap-3 mt-6 pt-2">
               <button
+                type="button"
                 onClick={() => { setShowForm(false); setEditId(null); }}
                 className="flex-1 bg-[#f3f4f6] text-[#374151] font-semibold py-2.5 rounded-xl text-sm hover:bg-[#e5e7eb] transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={saving}
                 className="flex-1 bg-[#0d3a24] hover:bg-[#154d32] text-white font-semibold py-2.5 rounded-xl text-sm shadow-md transition-all disabled:opacity-40 flex items-center justify-center gap-2"
@@ -628,12 +845,14 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             <p className="text-[#6b7280] text-xs leading-relaxed mb-6">{confirmModal.message}</p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setConfirmModal(null)}
                 className="flex-1 bg-[#f3f4f6] text-[#374151] font-semibold py-2.5 rounded-xl text-sm hover:bg-[#e5e7eb] transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={confirmModal.onConfirm}
                 className="flex-1 bg-[#0d3a24] hover:bg-[#154d32] text-white font-semibold py-2.5 rounded-xl text-sm shadow-md transition-all"
               >

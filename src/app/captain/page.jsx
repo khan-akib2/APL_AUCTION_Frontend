@@ -175,7 +175,8 @@ export default function CaptainDashboard() {
     if (!activeSession || !team || bidding || finalizingState) return;
     const nextBid = activeSession.currentBid + increment;
     if (team.budget < nextBid) return toast('Insufficient budget', 'warning');
-    if ((team.playerCount || team.players?.length || 0) >= 7) return toast('Squad is full (7/7)', 'warning');
+    const maxSquad = team.teamSize || 7;
+    if ((team.playerCount || team.players?.length || 0) >= maxSquad) return toast(`Squad is full (${maxSquad}/${maxSquad})`, 'warning');
 
     setBidding(true);
     const res = await request('/api/auction/bid', {
@@ -340,7 +341,7 @@ export default function CaptainDashboard() {
                   {bidding && <div className="flex justify-center"><Spinner size="sm" /></div>}
                   {!canBid && activeSession && (
                     <p className="text-center text-[#9ca3af] text-[11px] pt-1 font-medium">
-                      {finalizingState ? 'Bidding locked' : team?.playerCount >= 7 ? 'Squad full (7/7)' : isLeading ? 'You are leading the bid' : 'Insufficient budget'}
+                      {finalizingState ? 'Bidding locked' : (team?.playerCount || 0) >= (team?.teamSize || 7) ? `Squad full (${team?.teamSize || 7}/${team?.teamSize || 7})` : isLeading ? 'You are leading the bid' : 'Insufficient budget'}
                     </p>
                   )}
                 </div>
@@ -462,7 +463,7 @@ export default function CaptainDashboard() {
               {/* Squad Card */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 flex-1 flex flex-col shadow-sm min-h-0">
                 <p className="text-[#111827] text-xs uppercase tracking-wider font-bold mb-3 shrink-0">
-                  My Squad · {team?.playerCount || 0}/7
+                  My Squad · {team?.playerCount || 0}/{team?.teamSize || 7}
                 </p>
                 <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
                   {team?.players?.map(p => (

@@ -95,7 +95,7 @@ function TeamCard({ team, idx }) {
             )}
             <div className="min-w-0">
               <p className="text-[#111827] font-bold text-sm truncate">{team.name}</p>
-              <p className="text-[#6b7280] text-xs">{team.playerCount || team.players?.length || 0}/7 players</p>
+              <p className="text-[#6b7280] text-xs">{team.playerCount || team.players?.length || 0}/{team.teamSize || 7} players</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-0.5 shrink-0">

@@ -6,6 +6,8 @@ import { useSocket } from '@/context/SocketContext';
 import { useToast } from '@/components/Toast';
 import Spinner from '@/components/Spinner';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
+import SkillBadge from '@/components/SkillBadge';
+import { displaySkills } from '@/lib/skills';
 
 export default function AuctionControlView({ sport = 'cricket' }) {
   const { request } = useApi();
@@ -326,40 +328,65 @@ export default function AuctionControlView({ sport = 'cricket' }) {
             <div className="flex-1 p-6 flex flex-col justify-between overflow-y-auto min-h-0 relative">
               {activePlayer ? (
                 <>
-                  {/* Top: Player Image Area with BASE Price Badge */}
-                  <div className="relative flex-1 flex flex-col items-center justify-center min-h-[220px] rounded-2xl overflow-hidden mb-5 bg-[#faf8f5] border border-[#e8e2d5]">
-                    {/* BASE badge in top right */}
-                    <div className="absolute top-3.5 right-3.5 rounded-xl px-3 py-1.5 text-center bg-white border border-[#e8e2d5] shadow-sm">
-                      <p className="text-[9px] uppercase tracking-wider text-[#6b7280] font-bold leading-none mb-0.5">BASE</p>
-                      <p className="font-black text-sm text-[#0d3a24] tabular-nums leading-tight">{activePlayer.basePrice}</p>
-                    </div>
-
-                    {/* Photo or Clean Silhouette */}
+                  {/* Active Player Card with Full Bleed Photo & Overlays matching Image 2 */}
+                  <div className="relative rounded-3xl overflow-hidden shadow-md flex-1 min-h-[300px] border border-[#e8e2d5] bg-white flex flex-col justify-end mb-4">
                     {activePlayer.photo ? (
-                      <div className="relative w-44 h-44 rounded-2xl overflow-hidden border border-[#e8e2d5] shadow-md">
-                        <Image src={activePlayer.photo} alt={activePlayer.name} fill unoptimized className="object-cover" />
-                      </div>
+                      <>
+                        <Image
+                          src={activePlayer.photo}
+                          alt=""
+                          fill
+                          unoptimized
+                          className="absolute inset-0 object-cover scale-110 blur-xl opacity-30 pointer-events-none"
+                        />
+                        <Image
+                          src={activePlayer.photo}
+                          alt={activePlayer.name}
+                          fill
+                          unoptimized
+                          className="absolute inset-0 object-cover"
+                          style={{ objectPosition: '50% 20%' }}
+                          loading="eager"
+                        />
+                      </>
                     ) : (
-                      <div className="w-28 h-28 rounded-full bg-[#f4efe6] border border-[#e8e2d5] flex items-center justify-center shadow-inner">
+                      <div className="absolute inset-0 bg-[#faf8f5] flex items-center justify-center">
                         {isFootball ? (
-                          <FootballIcon className="w-12 h-12 text-[#0d3a24]/40" />
+                          <FootballIcon className="w-20 h-20 text-[#0d3a24]/20" />
                         ) : (
-                          <CricketIcon className="w-12 h-12 text-[#c59b27]/40" />
+                          <CricketIcon className="w-20 h-20 text-[#c59b27]/20" />
                         )}
                       </div>
                     )}
-                  </div>
 
-                  {/* Player Name and Role Pill */}
-                  <div className="mb-4">
-                    <div className="mb-1">
-                      <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24] border border-[#e8e2d5] tracking-wider">
-                        {activePlayer.gender || (isFootball ? 'FORWARD' : 'BATSMAN')}
-                      </span>
+                    {/* Full Bleed Gradient Overlay */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(13,58,36,0.2) 35%, rgba(13,58,36,0.85) 70%, rgba(13,58,36,0.98) 100%)'
+                      }}
+                    />
+
+                    {/* Base price badge top-left (matching Image 2) */}
+                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur border border-[#e8e2d5] rounded-2xl px-3.5 py-2 text-center shadow-sm z-10">
+                      <p className="text-[#6b7280] text-[9px] uppercase tracking-wider font-bold">Base</p>
+                      <p className="text-[#0d3a24] font-black text-lg tabular-nums leading-none">{activePlayer.basePrice} pts</p>
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-[#111827] uppercase tracking-tight truncate">
-                      {activePlayer.name}
-                    </h2>
+
+                    {/* Player info — bottom overlay */}
+                    <div className="relative z-10 px-6 pb-5 pt-10 text-white">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <p className="text-[#d8b04a] text-xs uppercase tracking-widest font-bold">
+                          {displaySkills(activePlayer.skills || [])[0] || (activePlayer.gender ? activePlayer.gender.toUpperCase() : (isFootball ? 'FORWARD' : 'BATSMAN'))}
+                        </p>
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl font-black uppercase leading-tight tracking-tight mb-2 truncate drop-shadow-md">
+                        {activePlayer.name}
+                      </h1>
+                      <div className="flex flex-wrap gap-1.5">
+                        {displaySkills(activePlayer.skills || []).map(s => <SkillBadge key={s} skill={s} />)}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Bidding Summary Box */}
