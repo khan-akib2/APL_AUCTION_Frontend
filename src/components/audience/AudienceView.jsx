@@ -143,6 +143,10 @@ export default function AudienceView({ initialSport = 'cricket' }) {
   const isFootball = sport === 'football';
   const sportLabel = isFootball ? 'Football' : 'Cricket';
 
+  useEffect(() => {
+    setSport(initialSport);
+  }, [initialSport]);
+
   const [activeSession, setActiveSession] = useState(null);
   const [activePlayer, setActivePlayer] = useState(null);
   const [teams, setTeams] = useState([]);
@@ -156,16 +160,17 @@ export default function AudienceView({ initialSport = 'cricket' }) {
   const socketRef = useRef(null);
 
   const fetchTeams = useCallback(() => {
-    fetch(`${BACKEND_URL}/api/teams?sport=${sport}`)
-      .then(r => r.json())
-      .then(d => { if (d.teams) setTeams(d.teams); })
+    fetch(`${BACKEND_URL}/api/teams-public?sport=${sport}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.teams) setTeams(d.teams); })
       .catch(() => {});
   }, [sport]);
 
   const fetchActiveAuction = useCallback(() => {
-    fetch(`${BACKEND_URL}/api/auction/active?sport=${sport}`)
-      .then(r => r.json())
+    fetch(`${BACKEND_URL}/api/auction/active-public?sport=${sport}`)
+      .then(r => (r.ok ? r.json() : null))
       .then(d => {
+        if (!d || d.error) return; // Do not clear active auction state on network or auth errors!
         if (d.session) {
           setActiveSession(d.session);
           setActivePlayer(d.session.playerId);
@@ -213,40 +218,58 @@ export default function AudienceView({ initialSport = 'cricket' }) {
     s.on('connect', () => {
       setConnected(true);
       s.emit('join:sport', sport);
+      s.emit('joinRoom', { room: `auction:${sport}`, sport });
     });
 
     s.on('disconnect', () => setConnected(false));
     s.on('viewers:count', (count) => setViewerCount(count));
 
-    s.on('auction:start', ({ session, player, sport: evSport }) => {
-      if (evSport && evSport !== sport) return;
+    const handleStart = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      const session = data.session;
+      const player = data.player || session?.playerId;
       setActiveSession(session);
       setActivePlayer(player);
       setBidHistory([]);
-      setTimer({ remaining: session.timerRemaining, paused: false });
+      setTimer({ remaining: session?.timerRemaining, paused: false });
       setFinalizingState(null);
       setTab('auction');
-    });
+    };
 
-    s.on('auction:bid_update', (data) => {
+    const handleBidUpdate = (data) => {
       if (data?.sport && data.sport !== sport) return;
-      setActiveSession(prev => prev ? { ...prev, currentBid: data.currentBid, currentHighestBidderName: data.bidderTeamName } : prev);
-      setBidHistory(prev => [{ teamName: data.bidderTeamName, amount: data.currentBid }, ...prev]);
+      const bidAmt = data.currentBid ?? data.amount;
+      const bidderName = data.bidderTeamName ?? data.teamName ?? '';
+      setActiveSession(prev => {
+        if (!prev) {
+          fetchActiveAuction();
+          return prev;
+        }
+        return {
+          ...prev,
+          currentBid: bidAmt,
+          currentHighestBidderName: bidderName,
+        };
+      });
+      setBidHistory(prev => [{ teamName: bidderName, amount: bidAmt }, ...prev]);
       playBidSound();
-    });
+    };
 
-    s.on('auction:timer', (data) => {
+    const handleTimer = (data) => {
       if (data?.sport && data.sport !== sport) return;
       setTimer(data);
-    });
+    };
 
-    s.on('auction:finalizing', (data) => {
+    const handleFinalizing = (data) => {
       if (data?.sport && data.sport !== sport) return;
       setFinalizingState(data);
-    });
+    };
 
-    s.on('auction:sold', ({ player, team, sport: evSport }) => {
-      if (evSport && evSport !== sport) return;
+    const handleSold = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      const player = data.player || data.session?.playerId;
+      const team = data.team;
+      const teamName = data.teamName || team?.name || '';
       setFinalizingState(null);
       setActiveSession(null);
       setActivePlayer(null);
@@ -255,7 +278,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       playSoldSound();
 
       if (player?.isMysteryPlayer) {
-        setMysteryReveal({ player, teamName: team?.name || '' });
+        setMysteryReveal({ player, teamName });
       } else {
         const confettiColors = ['#0d3a24', '#c59b27', '#ffffff', '#225c40'];
         import('canvas-confetti').then(({ default: confetti }) => {
@@ -263,9 +286,9 @@ export default function AudienceView({ initialSport = 'cricket' }) {
         });
       }
       fetchTeams();
-    });
+    };
 
-    s.on('auction:unsold', (data) => {
+    const handleUnsold = (data) => {
       if (data?.sport && data.sport !== sport) return;
       setFinalizingState(null);
       setActiveSession(null);
@@ -273,18 +296,53 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       setBidHistory([]);
       setTimer({ remaining: null, paused: false });
       playUnsoldSound();
-    });
+    };
+
+    s.on('auction:start', handleStart);
+    s.on('playerNominated', handleStart);
+
+    s.on('auction:bid_update', handleBidUpdate);
+    s.on('bidPlaced', handleBidUpdate);
+
+    s.on('auction:timer', handleTimer);
+    s.on('timerTick', handleTimer);
+
+    s.on('auction:finalizing', handleFinalizing);
+    s.on('auctionFinalizing', handleFinalizing);
+
+    s.on('auction:sold', handleSold);
+    s.on('playerSold', handleSold);
+
+    s.on('auction:unsold', handleUnsold);
+    s.on('playerUnsold', handleUnsold);
 
     s.on('auction:resale', (data) => {
       if (data?.sport && data.sport !== sport) return;
       fetchTeams();
     });
+    s.on('teams:reset', (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      fetchTeams();
+    });
 
     return () => {
+      s.off('auction:start');
+      s.off('playerNominated');
+      s.off('auction:bid_update');
+      s.off('bidPlaced');
+      s.off('auction:timer');
+      s.off('timerTick');
       s.off('auction:finalizing');
+      s.off('auctionFinalizing');
+      s.off('auction:sold');
+      s.off('playerSold');
+      s.off('auction:unsold');
+      s.off('playerUnsold');
+      s.off('auction:resale');
+      s.off('teams:reset');
       s.disconnect();
     };
-  }, [sport, fetchTeams, isFootball]);
+  }, [sport, fetchTeams, fetchActiveAuction]);
 
   const handleSportSwitch = (targetSport) => {
     if (targetSport === sport) return;
