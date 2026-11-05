@@ -6,29 +6,35 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-const navItems = [
-  { href: '/admin', label: 'Dashboard' },
-  { href: '/admin/auction', label: 'Auction Control' },
-  { href: '/admin/players', label: 'Players' },
-  { href: '/admin/teams', label: 'Teams' },
-  { href: '/admin/log', label: 'Auction Log' },
-  { href: '/admin/summary', label: 'Final Summary' },
-];
-
 export default function AdminSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
+  const isFootball = pathname?.startsWith('/admin/football');
+  const basePath = isFootball ? '/admin/football' : '/admin';
+
+  const navItems = [
+    { href: basePath, label: 'Dashboard' },
+    { href: `${basePath}/auction`, label: 'Auction Control' },
+    { href: `${basePath}/players`, label: 'Players' },
+    { href: `${basePath}/teams`, label: 'Teams' },
+    { href: `${basePath}/log`, label: 'Auction Log' },
+    { href: `${basePath}/summary`, label: 'Final Summary' },
+  ];
+
   const handleLogout = () => { logout(); router.push('/login'); };
 
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#0d1e3a] border-b border-[#c9a227]/20 flex items-center justify-between px-4 h-12">        <div className="flex items-center gap-2">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#0d1e3a] border-b border-[#c9a227]/20 flex items-center justify-between px-4 h-12">
+        <div className="flex items-center gap-2">
           <Logo size="sm" className="rounded-xl" />
-          <span className="text-[#c9a227] font-bold tracking-widest text-xs uppercase">APL Auction</span>
+          <span className="text-[#c9a227] font-bold tracking-widest text-xs uppercase">
+            APL {isFootball ? 'Football' : 'Cricket'}
+          </span>
         </div>
         <button onClick={() => setOpen(!open)} aria-label="Open navigation menu" className="text-[#c9a227]/60 hover:text-[#c9a227] transition-colors p-1">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -46,12 +52,14 @@ export default function AdminSidebar() {
         lg:translate-x-0
       `}>
         {/* Logo */}
-        <div className="px-5 h-14 flex items-center justify-between border-b border-[#c9a227]/20">
+        <div className="px-5 h-14 flex items-center justify-between border-b border-[#c9a227]/20 shrink-0">
           <div className="flex items-center gap-2.5">
             <Logo size="sm" className="rounded-xl" />
             <div>
               <div className="text-[#c9a227] font-bold text-xs tracking-widest uppercase">APL Auction</div>
-              <div className="text-[#c9a227]/30 text-[10px] tracking-widest uppercase">Admin Panel</div>
+              <div className="text-[#c9a227]/50 text-[10px] tracking-wider uppercase font-semibold flex items-center gap-1">
+                <span>{isFootball ? '⚽ Football Admin' : '🏏 Cricket Admin'}</span>
+              </div>
             </div>
           </div>
           <button onClick={() => setOpen(false)} aria-label="Close navigation menu" className="lg:hidden text-[#c9a227]/30 hover:text-[#c9a227] transition-colors">
@@ -61,7 +69,38 @@ export default function AdminSidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {/* Sport Switcher */}
+        <div className="px-3 pt-3 pb-2 shrink-0">
+          <div className="grid grid-cols-2 bg-[#060f1e] p-1 rounded-xl border border-[#c9a227]/20">
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                !isFootball
+                  ? 'bg-[#c9a227] text-[#0a1628] shadow'
+                  : 'text-white/40 hover:text-white'
+              }`}
+            >
+              <span>🏏</span>
+              <span>Cricket</span>
+            </Link>
+            <Link
+              href="/admin/football"
+              onClick={() => setOpen(false)}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                isFootball
+                  ? 'bg-[#c9a227] text-[#0a1628] shadow'
+                  : 'text-white/40 hover:text-white'
+              }`}
+            >
+              <span>⚽</span>
+              <span>Football</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Navigation links */}
+        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
           <p className="text-[#c9a227]/25 text-[10px] uppercase tracking-widest px-3 pb-2">Navigation</p>
           {navItems.map(item => (
             <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
@@ -75,7 +114,8 @@ export default function AdminSidebar() {
           ))}
         </nav>
 
-        <div className="px-3 py-3 border-t border-[#c9a227]/10 space-y-0.5">
+        {/* Footer actions */}
+        <div className="px-3 py-3 border-t border-[#c9a227]/10 space-y-0.5 shrink-0">
           <a href="/audience" target="_blank"
             className="flex items-center px-3 py-2.5 rounded-lg text-sm text-[#c9a227]/30 hover:text-[#c9a227]/70 hover:bg-white/5 transition-colors">
             Audience View ↗
