@@ -17,11 +17,16 @@ export function ToastProvider({ children }) {
       {children}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => (
-          <div key={t.id} className="bg-[#0d1e3a] border border-[#c9a227]/30 text-white px-4 py-3 rounded-lg shadow-2xl text-sm font-medium animate-fade-in max-w-sm flex items-center gap-2">
-            <span className="text-[#c9a227] text-xs font-bold uppercase tracking-wider border-r border-[#c9a227]/20 pr-2 mr-1">
+          <div key={t.id} className="bg-white border border-[#e8e2d5] text-[#111827] px-4 py-3 rounded-2xl shadow-xl text-sm font-medium animate-fade-in max-w-sm flex items-center gap-2.5">
+            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              t.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+              t.type === 'error' ? 'bg-rose-50 text-rose-800 border border-rose-200' :
+              t.type === 'warning' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+              'bg-[#f4efe6] text-[#0d3a24] border border-[#e8e2d5]'
+            }`}>
               {t.type === 'success' ? 'OK' : t.type === 'error' ? 'ERR' : t.type === 'warning' ? 'WARN' : 'INFO'}
             </span>
-            {t.message}
+            <span className="text-xs font-semibold">{t.message}</span>
           </div>
         ))}
       </div>

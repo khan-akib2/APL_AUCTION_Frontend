@@ -17,10 +17,10 @@ const FOOTBALL_ROLES = ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'];
 
 const STATUSES = ['available', 'sold', 'unsold', 'resold'];
 const STATUS_COLORS = {
-  available: 'bg-green-500/15 text-green-400 border-green-500/30',
-  sold: 'bg-[#c9a227]/15 text-[#c9a227] border-[#c9a227]/30',
-  unsold: 'bg-white/10 text-white/40 border-white/20',
-  resold: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+  available: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  sold: 'bg-amber-50 text-amber-800 border-amber-200',
+  unsold: 'bg-stone-100 text-stone-600 border-stone-200',
+  resold: 'bg-orange-50 text-orange-800 border-orange-200',
 };
 
 const emptyForm = {
@@ -414,46 +414,46 @@ export default function PlayersPageView({ sport = 'cricket' }) {
   const filtered = players.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-[calc(100vh-48px)]">
+    <div className="flex flex-col min-h-screen lg:h-[calc(100vh-48px)] bg-[#f8f6f0]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 lg:px-6 py-4 border-b border-[#c9a227]/15 gap-3 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 lg:px-8 py-5 border-b border-[#e8e2d5] bg-white gap-3 shrink-0">
         <div>
-          <h1 className="text-base font-semibold text-white flex items-center gap-2">
-            {isFootball ? <FootballIcon className="w-5 h-5 text-emerald-400" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
+          <h1 className="text-xl font-bold font-serif text-[#111827] flex items-center gap-2">
+            {isFootball ? <FootballIcon className="w-5 h-5 text-[#0d3a24]" /> : <CricketIcon className="w-5 h-5 text-[#c59b27]" />}
             <span>{sportLabel} Players</span>
           </h1>
-          <p className="text-white/40 text-xs mt-0.5">{total} total {sportLabel.toLowerCase()} players</p>
+          <p className="text-[#6b7280] text-xs mt-0.5">{total} total {sportLabel.toLowerCase()} players</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <label className={`bg-[#0d1e3a] border border-[#c9a227]/25 hover:border-[#c9a227]/50 text-white/70 hover:text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${csvUploading ? 'opacity-40 pointer-events-none' : ''}`}>
-            {csvUploading ? <Spinner size="sm" /> : <svg className="w-3.5 h-3.5 text-[#c9a227]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>}
+          <label className={`bg-white border border-[#e8e2d5] hover:border-[#0d3a24] text-[#4b5563] hover:text-[#111827] text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 ${csvUploading ? 'opacity-40 pointer-events-none' : ''}`}>
+            {csvUploading ? <Spinner size="sm" /> : <svg className="w-3.5 h-3.5 text-[#0d3a24]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>}
             Import CSV
             <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} disabled={csvUploading} />
           </label>
           <button onClick={exportCSV}
-            className="bg-[#0d1e3a] border border-[#c9a227]/25 hover:border-[#c9a227]/50 text-white/70 hover:text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5 text-[#c9a227]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            className="bg-white border border-[#e8e2d5] hover:border-[#c59b27] text-[#4b5563] hover:text-[#111827] text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-colors flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5 text-[#c59b27]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             Export CSV
           </button>
           <button onClick={() => setDeleteAllConfirm(true)} disabled={players.length === 0}
-            className="bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 text-xs font-semibold px-3 py-2 rounded-lg transition-colors disabled:opacity-40">
+            className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors disabled:opacity-40">
             Delete All
           </button>
           <button onClick={openAdd}
-            className={`text-xs font-bold px-4 py-2 rounded-lg transition-colors ${isFootball ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-md shadow-emerald-500/20' : 'bg-[#c9a227] text-[#0a1628] hover:bg-[#f0c040]'}`}>
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-all bg-[#0d3a24] hover:bg-[#154d32] text-white shadow-sm flex items-center gap-1.5">
             + Add Player
           </button>
         </div>
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="px-4 lg:px-6 py-3 border-b border-[#c9a227]/10 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+      <div className="px-4 lg:px-8 py-3.5 border-b border-[#e8e2d5] bg-[#faf8f5] flex flex-col sm:flex-row items-center gap-3 shrink-0">
         <div className="relative flex-1 w-full sm:w-auto">
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={`Search ${sportLabel.toLowerCase()} players...`}
-            className="w-full bg-[#0d1e3a] border border-[#c9a227]/15 rounded-lg px-3 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#c9a227]/40"
+            className="w-full bg-white border border-[#e8e2d5] rounded-xl px-3.5 py-2 text-xs text-[#111827] placeholder-[#9ca3af] focus:outline-none focus:border-[#0d3a24] shadow-sm"
           />
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
@@ -461,10 +461,10 @@ export default function PlayersPageView({ sport = 'cricket' }) {
             <button
               key={s}
               onClick={() => { setStatus(s); setPage(1); }}
-              className={`text-xs px-3 py-1.5 rounded-lg capitalize font-medium transition-colors shrink-0 ${
+              className={`text-xs px-3.5 py-1.5 rounded-xl capitalize font-semibold transition-all shrink-0 ${
                 status === s
-                  ? (isFootball ? 'bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-500/20' : 'bg-[#c9a227] text-[#0a1628] font-bold')
-                  : (isFootball ? 'bg-[#071d14] text-white/50 hover:text-white border border-emerald-500/20' : 'bg-[#0d1e3a] text-white/50 hover:text-white border border-[#c9a227]/15')
+                  ? 'bg-[#0d3a24] text-white shadow-sm'
+                  : 'bg-white text-[#4b5563] hover:text-[#111827] border border-[#e8e2d5]'
               }`}>
               {s}
             </button>
@@ -473,20 +473,20 @@ export default function PlayersPageView({ sport = 'cricket' }) {
       </div>
 
       {/* Players List Table */}
-      <div className="flex-1 overflow-hidden p-4 lg:p-6">
-        <div className="h-full border rounded-xl overflow-hidden flex flex-col ${isFootball ? 'bg-[#05140e] border-emerald-500/20 shadow-xl' : 'bg-[#060f1e] border-[#c9a227]/20'}">
+      <div className="flex-1 overflow-hidden p-4 lg:p-8">
+        <div className="h-full border border-[#e8e2d5] rounded-2xl overflow-hidden flex flex-col bg-white shadow-sm">
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-48"><Spinner size="lg" /></div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20 text-white/30 text-sm">
+              <div className="text-center py-20 text-[#9ca3af] text-sm">
                 No {sportLabel.toLowerCase()} players found.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[650px]">
-                  <thead className={`sticky top-0 z-10 ${isFootball ? 'bg-[#071d14]' : 'bg-[#0a1628]'}`}>
-                    <tr className="border-b border-[#c9a227]/15 text-left text-white/40 text-xs uppercase tracking-wider font-medium">
+                  <thead className="sticky top-0 z-10 bg-[#f4efe6]">
+                    <tr className="border-b border-[#e8e2d5] text-left text-[#4b5563] text-xs uppercase tracking-wider font-semibold">
                       <th className="px-4 py-3">Player</th>
                       <th className="px-4 py-3">Role / Skills</th>
                       <th className="px-4 py-3">Base Price</th>
@@ -495,23 +495,23 @@ export default function PlayersPageView({ sport = 'cricket' }) {
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#c9a227]/8">
+                  <tbody className="divide-y divide-[#e8e2d5]/70">
                     {filtered.map(p => (
-                      <tr key={p._id} className="hover:bg-[#c9a227]/5 transition-colors">
+                      <tr key={p._id} className="hover:bg-[#faf8f5] transition-colors">
                         <td className="px-4 py-3 flex items-center gap-3">
-                          <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-[#c9a227]/20 shrink-0 bg-[#0d1e3a]">
+                          <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-[#e8e2d5] shrink-0 bg-[#f4efe6]">
                             <PlayerPhoto src={p.photo} alt={p.name} />
                           </div>
                           <div>
-                            <div className="text-white font-medium flex items-center gap-2">
+                            <div className="text-[#111827] font-semibold flex items-center gap-2">
                               <span>{p.name}</span>
                               {p.isMysteryPlayer && (
-                                <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
+                                <span className="bg-purple-100 text-purple-700 border border-purple-200 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
                                   Mystery
                                 </span>
                               )}
                             </div>
-                            <div className="text-white/30 text-xs">{p.gender}</div>
+                            <div className="text-[#6b7280] text-xs">{p.gender}</div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -519,30 +519,30 @@ export default function PlayersPageView({ sport = 'cricket' }) {
                             {displaySkills(p.skills).map(s => <SkillBadge key={s} skill={s} />)}
                           </div>
                         </td>
-                        <td className={`px-4 py-3 font-semibold tabular-nums ${isFootball ? 'text-emerald-400' : 'text-[#c9a227]'}`}>{p.basePrice} pts</td>
+                        <td className="px-4 py-3 font-bold text-[#0d3a24] tabular-nums">{p.basePrice} pts</td>
                         <td className="px-4 py-3">
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLORS[p.status] || 'bg-white/10 text-white'}`}>
+                          <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[p.status] || 'bg-stone-100 text-stone-600'}`}>
                             {p.status}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs">
                           {p.status === 'sold' && p.soldTo ? (
                             <div>
-                              <span className="text-white font-medium">{p.soldTo.name}</span>
-                              <span className="text-[#c9a227] ml-1.5 font-bold">({p.soldPrice} pts)</span>
+                              <span className="text-[#111827] font-semibold">{p.soldTo.name}</span>
+                              <span className="text-[#c59b27] ml-1.5 font-bold">({p.soldPrice} pts)</span>
                             </div>
                           ) : (
-                            <span className="text-white/20">—</span>
+                            <span className="text-[#9ca3af]">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => openEdit(p)}
-                              className="text-xs text-white/40 hover:text-white bg-[#0d1e3a] border border-[#c9a227]/15 hover:border-[#c9a227]/40 px-2.5 py-1 rounded-md transition-colors">
+                              className="text-xs text-[#0d3a24] hover:bg-[#0d3a24]/10 border border-[#0d3a24]/20 px-3 py-1.5 rounded-lg font-semibold transition-colors">
                               Edit
                             </button>
                             <button onClick={() => setDeleteConfirm(p)}
-                              className="text-xs text-red-400/60 hover:text-red-400 bg-[#0d1e3a] border border-red-500/20 hover:border-red-500/50 px-2.5 py-1 rounded-md transition-colors">
+                              className="text-xs text-red-600 hover:bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg font-semibold transition-colors">
                               Delete
                             </button>
                           </div>
@@ -730,13 +730,13 @@ export default function PlayersPageView({ sport = 'cricket' }) {
 
       {/* Delete Single Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-6 w-full max-w-sm">
-            <h2 className="text-base font-semibold text-white mb-2">Delete {deleteConfirm.name}?</h2>
-            <p className="text-white/50 text-sm mb-6">Are you sure? This player will be permanently removed.</p>
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl border border-gray-100">
+            <h2 className="text-lg font-bold text-[#111827] mb-2">Delete {deleteConfirm.name}?</h2>
+            <p className="text-[#6b7280] text-sm mb-6">Are you sure? This player will be permanently removed.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-[#0a1628] border border-[#c9a227]/15 text-white/50 py-2.5 rounded-lg text-sm hover:text-white transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(deleteConfirm._id)} className="flex-1 bg-red-600/90 text-white font-medium py-2.5 rounded-lg text-sm hover:bg-red-600 transition-colors">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-[#f3f4f6] text-[#374151] font-semibold py-2.5 rounded-xl text-sm hover:bg-[#e5e7eb] transition-colors">Cancel</button>
+              <button onClick={() => handleDelete(deleteConfirm._id)} className="flex-1 bg-red-600 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-red-700 shadow-sm transition-colors">Delete</button>
             </div>
           </div>
         </div>
@@ -744,13 +744,13 @@ export default function PlayersPageView({ sport = 'cricket' }) {
 
       {/* Delete All Modal */}
       {deleteAllConfirm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d1e3a] border border-[#c9a227]/20 rounded-2xl p-6 w-full max-w-sm">
-            <h2 className="text-base font-semibold text-white mb-2">Delete All {sportLabel} Players?</h2>
-            <p className="text-white/50 text-sm mb-6">This will delete all {sportLabel.toLowerCase()} players and clear them from team rosters.</p>
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-sm shadow-2xl border border-gray-100">
+            <h2 className="text-lg font-bold text-[#111827] mb-2">Delete All {sportLabel} Players?</h2>
+            <p className="text-[#6b7280] text-sm mb-6">This will delete all {sportLabel.toLowerCase()} players and clear them from team rosters.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-[#0a1628] border border-[#c9a227]/15 text-white/50 py-2.5 rounded-lg text-sm hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleDeleteAll} className="flex-1 bg-red-600/90 text-white font-medium py-2.5 rounded-lg text-sm hover:bg-red-600 transition-colors">Delete All</button>
+              <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-[#f3f4f6] text-[#374151] font-semibold py-2.5 rounded-xl text-sm hover:bg-[#e5e7eb] transition-colors">Cancel</button>
+              <button onClick={handleDeleteAll} className="flex-1 bg-red-600 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-red-700 shadow-sm transition-colors">Delete All</button>
             </div>
           </div>
         </div>

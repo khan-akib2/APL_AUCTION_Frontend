@@ -35,82 +35,81 @@ export default function AdminDashboardView({ sport = 'cricket' }) {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Spinner size="lg" />
+    </div>
+  );
 
   const cards = [
-    { label: 'Total Players', value: stats?.total },
-    { label: 'Sold', value: stats?.sold },
-    { label: 'Unsold', value: stats?.unsold },
-    { label: 'Available', value: stats?.available },
-    { label: 'Teams', value: stats?.teams },
+    { label: 'Total Players', value: stats?.total, color: 'text-[#0d3a24]' },
+    { label: 'Sold', value: stats?.sold, color: 'text-[#c59b27]' },
+    { label: 'Unsold', value: stats?.unsold, color: 'text-[#6b7280]' },
+    { label: 'Available', value: stats?.available, color: 'text-[#0d3a24]' },
+    { label: 'Teams', value: stats?.teams, color: 'text-[#c59b27]' },
   ];
 
   return (
-    <div className={`p-4 lg:p-6 min-h-full ${isFootball ? 'bg-[#040e0a]' : 'bg-[#0a1628]'}`}>
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
-          {isFootball ? <FootballIcon className="w-5 h-5 text-emerald-400" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
+    <div className="p-4 sm:p-6 lg:p-8 min-h-full bg-[#f8f6f0]">
+      {/* Page Title */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold font-serif text-[#111827] flex items-center gap-2.5">
+          {isFootball ? (
+            <FootballIcon className="w-6 h-6 text-[#0d3a24]" />
+          ) : (
+            <CricketIcon className="w-6 h-6 text-[#c59b27]" />
+          )}
           <span>{sportLabel} Dashboard</span>
         </h1>
-        <p className={`text-xs mt-1 ${isFootball ? 'text-emerald-400/50' : 'text-[#c9a227]/40'}`}>
-          Live {sportLabel.toLowerCase()} auction overview and statistics
+        <p className="text-xs text-[#6b7280] mt-1">
+          Live {sportLabel.toLowerCase()} auction overview, team rosters, and quick controls
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-5">
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         {cards.map(c => (
           <div
             key={c.label}
-            className={`border rounded-xl p-4 relative overflow-hidden transition-all shadow-md ${
-              isFootball
-                ? 'bg-[#071d14] border-emerald-500/20 hover:border-emerald-500/40 shadow-emerald-950/40'
-                : 'bg-[#0d1e3a] border-[#c9a227]/15 hover:border-[#c9a227]/30 shadow-black/40'
-            }`}
+            className="bg-white border border-[#e8e2d5] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden"
           >
-            <div className={`absolute top-0 right-0 w-12 h-12 rounded-full -translate-y-4 translate-x-4 ${
-              isFootball ? 'bg-emerald-400/5' : 'bg-[#c9a227]/5'
-            }`} />
-            <div className={`text-3xl font-black relative tabular-nums ${
-              isFootball ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'text-[#c9a227]'
-            }`}>
-              {c.value ?? '—'}
+            <div className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight mb-1" style={{ color: c.color.replace('text-', '') }}>
+              <span className={c.color}>{c.value ?? '—'}</span>
             </div>
-            <div className="text-white/40 text-[11px] font-semibold mt-1.5 uppercase tracking-wider">{c.label}</div>
+            <div className="text-[#6b7280] text-xs font-semibold uppercase tracking-wider">
+              {c.label}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      {/* Action Banners */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <a
           href={`${basePath}/auction`}
-          className={`border rounded-xl p-5 transition-all shadow-md group ${
-            isFootball
-              ? 'bg-[#071d14] border-emerald-500/25 hover:border-emerald-400/50 hover:bg-[#0a261a]'
-              : 'bg-[#0d1e3a] border-[#c9a227]/20 hover:border-[#c9a227]/40 hover:bg-[#0d1e3a]/80'
-          }`}
+          className="bg-white border border-[#e8e2d5] hover:border-[#0d3a24]/40 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group block"
         >
-          <div className={`font-bold text-sm flex items-center gap-2 ${
-            isFootball ? 'text-emerald-300 group-hover:text-emerald-200' : 'text-[#c9a227] group-hover:text-[#f0c040]'
-          }`}>
+          <div className="font-bold text-base text-[#0d3a24] flex items-center gap-2">
             <span>{sportLabel} Auction Control</span>
             <span className="transition-transform group-hover:translate-x-1">→</span>
           </div>
-          <div className="text-white/35 text-xs mt-1">Start live bidding, manage queue, and monitor rounds</div>
+          <p className="text-[#6b7280] text-xs mt-1.5">
+            Start live bidding, manage player queue, handle unsold & resale rounds
+          </p>
         </a>
+
         <a
           href={isFootball ? '/audience/football' : '/audience'}
           target="_blank"
-          className={`border rounded-xl p-5 transition-all shadow-md group ${
-            isFootball
-              ? 'bg-[#071d14] border-emerald-500/20 hover:border-emerald-500/40 hover:bg-[#0a261a]'
-              : 'bg-[#0d1e3a] border-[#c9a227]/15 hover:border-[#c9a227]/30'
-          }`}
+          className="bg-white border border-[#e8e2d5] hover:border-[#c59b27]/40 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group block"
         >
-          <div className="text-white/60 group-hover:text-white font-bold text-sm flex items-center gap-1.5">
-            <span>{sportLabel} Audience Broadcast View</span>
-            <span className="text-xs">↗</span>
+          <div className="font-bold text-base text-[#c59b27] flex items-center gap-2">
+            <span>{sportLabel} Live Audience Broadcast</span>
+            <span className="text-xs transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
           </div>
-          <div className="text-white/30 text-xs mt-1">Open real-time spectator view on a separate screen or projector</div>
+          <p className="text-[#6b7280] text-xs mt-1.5">
+            Open full-screen spectator broadcast on projector or separate display
+          </p>
         </a>
       </div>
     </div>

@@ -12,162 +12,103 @@ import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
-// Football pitch line markings watermark
+// Football pitch line markings watermark (subtle on light background)
 function FootballPitchLines() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center opacity-30 select-none">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center opacity-40 select-none">
       <svg
-        className="w-full h-full max-w-6xl max-h-[85vh] text-emerald-400/20"
+        className="w-full h-full max-w-6xl max-h-[85vh] text-[#0d3a24]/12"
         viewBox="0 0 1000 600"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
       >
-        {/* Outer pitch border */}
         <rect x="30" y="30" width="940" height="540" rx="6" />
-
-        {/* Halfway line */}
         <line x1="500" y1="30" x2="500" y2="570" />
-
-        {/* Center circle and spot */}
         <circle cx="500" cy="300" r="90" />
         <circle cx="500" cy="300" r="4" fill="currentColor" />
-
-        {/* Left penalty box */}
         <rect x="30" y="150" width="160" height="300" />
         <rect x="30" y="220" width="60" height="160" />
         <circle cx="150" cy="300" r="4" fill="currentColor" />
         <path d="M190 240 A90 90 0 0 1 190 360" />
-
-        {/* Right penalty box */}
         <rect x="810" y="150" width="160" height="300" />
         <rect x="910" y="220" width="60" height="160" />
         <circle cx="850" cy="300" r="4" fill="currentColor" />
         <path d="M810 240 A90 90 0 0 0 810 360" />
-
-        {/* Corner arcs */}
         <path d="M30 50 A20 20 0 0 0 50 30" />
         <path d="M950 30 A20 20 0 0 0 970 50" />
-        <path d="M30 550 A20 20 0 0 1 50 570" />
-        <path d="M950 570 A20 20 0 0 1 970 550" />
       </svg>
     </div>
   );
 }
 
-// Cricket ground & 22-yard pitch line markings watermark
+// Cricket pitch lines watermark
 function CricketFieldLines() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center opacity-30 select-none">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center opacity-40 select-none">
       <svg
-        className="w-full h-full max-w-6xl max-h-[85vh] text-[#c9a227]/25"
-        viewBox="0 0 1000 600"
+        className="w-full h-full max-w-5xl max-h-[85vh] text-[#c59b27]/15"
+        viewBox="0 0 1000 700"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
       >
-        {/* Outer boundary rope (oval) */}
-        <ellipse cx="500" cy="300" rx="460" ry="260" />
-
-        {/* 30-yard inner circle */}
-        <ellipse cx="500" cy="300" rx="330" ry="185" strokeDasharray="8 6" strokeWidth="1.5" />
-
-        {/* Central 22-yard pitch strip */}
-        <rect x="465" y="195" width="70" height="210" rx="3" strokeWidth="1.5" />
-
-        {/* Pitch crease marks - Top (North wicket) */}
-        <line x1="440" y1="235" x2="560" y2="235" strokeWidth="1.5" />
-        <line x1="455" y1="215" x2="545" y2="215" strokeWidth="1.5" />
-        <line x1="455" y1="215" x2="455" y2="245" strokeWidth="1.2" />
-        <line x1="545" y1="215" x2="545" y2="245" strokeWidth="1.2" />
-        {/* Top 3 Stumps */}
-        <circle cx="493" cy="215" r="2.5" fill="currentColor" />
-        <circle cx="500" cy="215" r="2.5" fill="currentColor" />
-        <circle cx="507" cy="215" r="2.5" fill="currentColor" />
-
-        {/* Pitch crease marks - Bottom (South wicket) */}
-        <line x1="440" y1="365" x2="560" y2="365" strokeWidth="1.5" />
-        <line x1="455" y1="385" x2="545" y2="385" strokeWidth="1.5" />
-        <line x1="455" y1="355" x2="455" y2="385" strokeWidth="1.2" />
-        <line x1="545" y1="355" x2="545" y2="385" strokeWidth="1.2" />
-        {/* Bottom 3 Stumps */}
-        <circle cx="493" cy="385" r="2.5" fill="currentColor" />
-        <circle cx="500" cy="385" r="2.5" fill="currentColor" />
-        <circle cx="507" cy="385" r="2.5" fill="currentColor" />
-
-        {/* Sight screens */}
-        <line x1="465" y1="24" x2="535" y2="24" strokeWidth="3" strokeLinecap="round" />
-        <line x1="465" y1="576" x2="535" y2="576" strokeWidth="3" strokeLinecap="round" />
+        <ellipse cx="500" cy="350" rx="460" ry="310" strokeWidth="2.5" />
+        <circle cx="500" cy="350" r="230" strokeWidth="2" strokeDasharray="8 8" />
+        <rect x="460" y="180" width="80" height="340" rx="4" strokeWidth="2" />
+        <line x1="440" y1="230" x2="560" y2="230" strokeWidth="2" />
+        <line x1="440" y1="470" x2="560" y2="470" strokeWidth="2" />
+        <line x1="465" y1="210" x2="535" y2="210" strokeWidth="3" strokeLinecap="round" />
+        <line x1="465" y1="490" x2="535" y2="490" strokeWidth="3" strokeLinecap="round" />
       </svg>
     </div>
   );
 }
 
-// Position badge helper for football
 function PositionPill({ skill, isFootball }) {
   if (!isFootball) return <SkillBadge skill={skill} />;
-
-  const s = (skill || '').toLowerCase();
-  let color = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
-  if (s.includes('forward') || s.includes('striker')) {
-    color = 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm shadow-rose-500/20';
-  } else if (s.includes('midfield')) {
-    color = 'bg-sky-500/20 text-sky-300 border-sky-500/40 shadow-sm shadow-sky-500/20';
-  } else if (s.includes('defend')) {
-    color = 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/20';
-  } else if (s.includes('goal') || s.includes('keeper')) {
-    color = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20';
-  }
-
   return (
-    <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${color}`}>
+    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#f4efe6] text-[#0d3a24] border border-[#e8e2d5]">
       {skill}
     </span>
   );
 }
 
-function TeamCard({ team, idx, isFootball }) {
+function TeamCard({ team, idx }) {
   const [expanded, setExpanded] = useState(false);
   const pct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
 
-  const cardBorder = isFootball
-    ? 'border-emerald-500/20 hover:border-emerald-400/50 bg-[#081e15]'
-    : 'border-[#c9a227]/15 bg-[#0d1e3a]';
-  const badgeColor = isFootball ? 'text-emerald-400/40' : 'text-[#c9a227]/30';
-  const pointsColor = isFootball ? 'text-emerald-400' : 'text-[#c9a227]';
-  const barColor = isFootball ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#c9a227]/60';
-
   return (
-    <div className={`border rounded-lg lg:rounded-xl overflow-hidden transition-all duration-200 shadow-md ${cardBorder}`}>
-      <button onClick={() => setExpanded(e => !e)} className="w-full p-3 sm:p-4 lg:p-5 text-left">
-        <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
-          <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0">
-            <span className={`text-[10px] sm:text-xs w-4 shrink-0 text-center font-bold ${badgeColor}`}>{idx + 1}</span>
+    <div className="border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md bg-white">
+      <button onClick={() => setExpanded(e => !e)} className="w-full p-4 sm:p-5 text-left">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex items-start gap-2.5 flex-1 min-w-0">
+            <span className="text-xs w-5 shrink-0 text-center font-bold text-[#9ca3af]">{idx + 1}</span>
             {team.logo ? (
-              <div className={`relative w-8 h-8 sm:w-10 sm:h-10 rounded-lg overflow-hidden border shrink-0 ${isFootball ? 'border-emerald-500/30 bg-[#05140e]' : 'border-[#c9a227]/20 bg-[#0a1628]'}`}>
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-[#e8e2d5] bg-[#faf8f5] shrink-0">
                 <Image src={team.logo} alt={team.name} fill unoptimized className="object-contain p-1" />
               </div>
             ) : (
-              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg border flex items-center justify-center shrink-0 ${isFootball ? 'border-emerald-500/20 bg-[#05140e]' : 'border-[#c9a227]/10 bg-[#0a1628]'}`}>
-                <span className={`text-sm font-black ${isFootball ? 'text-emerald-400/50' : 'text-[#c9a227]/30'}`}>{team.name[0]}</span>
+              <div className="w-10 h-10 rounded-xl border border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-center shrink-0">
+                <span className="text-sm font-black text-[#0d3a24]">{team.name[0]}</span>
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-white font-semibold text-xs sm:text-sm truncate">{team.name}</p>
-              <p className="text-white/30 text-[10px] sm:text-xs">{team.playerCount || team.players?.length || 0}/7 players</p>
+              <p className="text-[#111827] font-bold text-sm truncate">{team.name}</p>
+              <p className="text-[#6b7280] text-xs">{team.playerCount || team.players?.length || 0}/7 players</p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <p className={`font-bold text-xs sm:text-sm ${pointsColor}`}>{team.budget}</p>
-            <p className="text-white/25 text-[9px] sm:text-xs">pts left</p>
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
+            <p className="font-black text-base text-[#0d3a24] tabular-nums">{team.budget}</p>
+            <p className="text-[#6b7280] text-[10px]">pts left</p>
           </div>
         </div>
-        <div className="h-1 sm:h-1.5 bg-white/5 rounded-full overflow-hidden mb-1.5">
-          <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+        <div className="h-1.5 bg-[#f4efe6] rounded-full overflow-hidden mb-2">
+          <div className="h-full rounded-full transition-all duration-500 bg-[#0d3a24]" style={{ width: `${Math.min(pct, 100)}%` }} />
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-white/20 text-[9px] sm:text-xs">{pct}% spent</p>
-          <svg className={`w-3 h-3 text-white/20 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <p className="text-[#9ca3af] text-xs">{pct}% spent</p>
+          <svg className={`w-3.5 h-3.5 text-[#6b7280] transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -176,22 +117,18 @@ function TeamCard({ team, idx, isFootball }) {
       {/* Players list — animated expand */}
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ maxHeight: expanded ? '300px' : '0px' }}
+        style={{ maxHeight: expanded ? '320px' : '0px' }}
       >
-        <div className={`border-t px-3 pb-3 space-y-1.5 max-h-48 overflow-y-auto ${isFootball ? 'border-emerald-500/10' : 'border-[#c9a227]/10'}`}>
+        <div className="border-t border-[#e8e2d5] bg-[#faf8f5] p-3 space-y-1.5 max-h-52 overflow-y-auto">
           {!team.players?.length ? (
-            <p className="text-white/20 text-xs text-center py-3">No players yet</p>
+            <p className="text-[#9ca3af] text-xs text-center py-3">No players yet</p>
           ) : team.players.map(p => (
-            <div key={p._id} className={`flex items-center justify-between rounded-lg px-2.5 py-2 gap-2 ${isFootball ? 'bg-[#05150f]' : 'bg-[#0a1628]/60'}`}>
+            <div key={p._id} className="flex items-center justify-between rounded-xl px-3 py-2 bg-white border border-[#e8e2d5] gap-2 shadow-sm">
               <div className="min-w-0">
-                <p className="text-white/85 text-xs font-semibold truncate">
-                  {p.name}
-                </p>
-                <p className={`text-[10px] ${isFootball ? 'text-emerald-400/60' : 'text-white/30'}`}>
-                  {p.isMysteryPlayer ? `Mystery · ${p.skills?.[0] || '—'}` : (p.skills?.[0] || '—')}
-                </p>
+                <p className="text-[#111827] text-xs font-semibold truncate">{p.name}</p>
+                <p className="text-[#6b7280] text-[10px]">{p.isMysteryPlayer ? `Mystery · ${p.skills?.[0] || '—'}` : (p.skills?.[0] || '—')}</p>
               </div>
-              <span className={`text-[10px] font-bold shrink-0 ${pointsColor}`}>{p.soldPrice} pts</span>
+              <span className="text-[11px] font-black text-[#c59b27] tabular-nums shrink-0">{p.soldPrice} pts</span>
             </div>
           ))}
         </div>
@@ -203,30 +140,30 @@ function TeamCard({ team, idx, isFootball }) {
 export default function AudienceView({ initialSport = 'cricket' }) {
   const router = useRouter();
   const [sport, setSport] = useState(initialSport);
-  const [activePlayer, setActivePlayer] = useState(null);
-  const [activeSession, setActiveSession] = useState(null);
-  const [bidHistory, setBidHistory] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [connected, setConnected] = useState(false);
-  const [tab, setTab] = useState('auction');
-  const [viewerCount, setViewerCount] = useState(0);
-  const [timer, setTimer] = useState({ remaining: null, paused: false });
-  const [mysteryReveal, setMysteryReveal] = useState(null);
-  const [finalizingState, setFinalizingState] = useState(null);
-
-  const socketRef = useRef(null);
   const isFootball = sport === 'football';
   const sportLabel = isFootball ? 'Football' : 'Cricket';
 
+  const [activeSession, setActiveSession] = useState(null);
+  const [activePlayer, setActivePlayer] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [bidHistory, setBidHistory] = useState([]);
+  const [connected, setConnected] = useState(false);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [tab, setTab] = useState('auction');
+  const [mysteryReveal, setMysteryReveal] = useState(null);
+  const [timer, setTimer] = useState({ remaining: null, paused: false });
+  const [finalizingState, setFinalizingState] = useState(null);
+  const socketRef = useRef(null);
+
   const fetchTeams = useCallback(() => {
-    return fetch(`${BACKEND_URL}/api/teams-public?sport=${sport}`)
+    fetch(`${BACKEND_URL}/api/teams?sport=${sport}`)
       .then(r => r.json())
-      .then(d => setTeams(d.teams || []))
+      .then(d => { if (d.teams) setTeams(d.teams); })
       .catch(() => {});
   }, [sport]);
 
   const fetchActiveAuction = useCallback(() => {
-    return fetch(`${BACKEND_URL}/api/auction/active-public?sport=${sport}`)
+    fetch(`${BACKEND_URL}/api/auction/active?sport=${sport}`)
       .then(r => r.json())
       .then(d => {
         if (d.session) {
@@ -320,9 +257,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       if (player?.isMysteryPlayer) {
         setMysteryReveal({ player, teamName: team?.name || '' });
       } else {
-        const confettiColors = isFootball
-          ? ['#10b981', '#00f59b', '#ffffff', '#34d399', '#06b6d4']
-          : ['#c9a227', '#f0c040', '#ffffff', '#ffd700'];
+        const confettiColors = ['#0d3a24', '#c59b27', '#ffffff', '#225c40'];
         import('canvas-confetti').then(({ default: confetti }) => {
           confetti({ particleCount: 220, spread: 110, origin: { y: 0.55 }, colors: confettiColors });
         });
@@ -360,86 +295,39 @@ export default function AudienceView({ initialSport = 'cricket' }) {
     router.push(targetSport === 'football' ? '/audience/football' : '/audience');
   };
 
-  // Theme tokens
-  const pageBg = isFootball
-    ? 'bg-[#040e0a]'
-    : 'bg-[#0a1628]';
-
-  const headerBg = isFootball
-    ? 'bg-[#071912] border-emerald-500/25 shadow-lg shadow-emerald-950/40'
-    : 'bg-[#0d1e3a] border-[#c9a227]/20';
-
-  const activeTabStyle = isFootball
-    ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold'
-    : 'text-[#c9a227] border-b-2 border-[#c9a227] font-semibold';
-
-  const cardContainerBg = isFootball
-    ? 'bg-[#071d14] border-emerald-500/25 shadow-2xl shadow-emerald-950/50'
-    : 'bg-[#0d1e3a] border-[#c9a227]/20 shadow-xl';
-
-  const accentColor = isFootball ? 'text-emerald-400' : 'text-[#c9a227]';
-
   return (
-    <div className={`h-screen max-h-screen ${pageBg} text-white flex flex-col overflow-hidden relative font-sans transition-colors duration-300`}>
+    <div className="h-screen max-h-screen bg-[#f8f6f0] text-[#111827] flex flex-col overflow-hidden relative font-sans transition-colors duration-300">
       {/* Background Stadium Glow & Watermark (Cricket & Football) */}
-      {isFootball ? (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 70% 45% at 50% 0%, rgba(16, 185, 129, 0.15) 0%, rgba(4, 14, 10, 0) 80%)'
-            }}
-          />
-          <FootballPitchLines />
-        </>
-      ) : (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 70% 45% at 50% 0%, rgba(201, 162, 39, 0.14) 0%, rgba(10, 22, 40, 0) 80%)'
-            }}
-          />
-          <CricketFieldLines />
-        </>
-      )}
+      {isFootball ? <FootballPitchLines /> : <CricketFieldLines />}
 
       {/* Header */}
-      <header className={`${headerBg} border-b px-4 lg:px-8 h-12 lg:h-14 flex items-center justify-between shrink-0 z-20 backdrop-blur-md`}>
+      <header className="bg-white border-b border-[#e8e2d5] px-4 lg:px-8 h-14 lg:h-16 flex items-center justify-between shrink-0 z-20 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Logo size="sm" className="rounded-xl w-7 h-7" />
+          <div className="flex items-center gap-2.5">
+            <Logo size="sm" className="rounded-xl w-8 h-8" />
             <div className="flex flex-col">
-              <span className={`font-black text-xs tracking-widest uppercase leading-none ${isFootball ? 'text-emerald-400' : 'text-[#c9a227]'}`}>
+              <span className="font-serif font-bold text-sm tracking-wide text-[#0d3a24]">
                 {isFootball ? 'APL Football' : 'APL Cricket'}
               </span>
-              <span className="text-[9px] uppercase tracking-wider text-white/30 font-semibold">Live Auction Broadcast</span>
+              <span className="text-[10px] uppercase tracking-wider text-[#6b7280] font-semibold">Live Broadcast</span>
             </div>
           </div>
 
-          <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${
-            isFootball
-              ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-300 shadow-sm shadow-emerald-500/20'
-              : 'bg-[#c9a227]/10 border-[#c9a227]/25 text-[#c9a227]'
-          }`}>
-            {isFootball ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse" />
-            )}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#e8e2d5] bg-[#f4efe6] text-[#0d3a24] text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-[#0d3a24] animate-pulse" />
             <span className="uppercase tracking-widest text-[10px]">{sportLabel} ARENA</span>
           </div>
         </div>
 
-        {/* Center: Sport Switcher segmented control */}
-        <div className="flex items-center bg-black/40 p-1 rounded-xl border border-white/10 shadow-inner backdrop-blur">
+        {/* Center: Sport Switcher */}
+        <div className="flex items-center bg-[#f4efe6] p-1 rounded-xl border border-[#e8e2d5] shadow-inner">
           <button
             type="button"
             onClick={() => handleSportSwitch('cricket')}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
               !isFootball
-                ? 'bg-[#c9a227] text-[#0a1628] shadow-md shadow-[#c9a227]/30 scale-[1.02]'
-                : 'text-white/40 hover:text-white hover:bg-white/5'
+                ? 'bg-[#0d3a24] text-white shadow-sm'
+                : 'text-[#4b5563] hover:text-[#111827]'
             }`}
           >
             <CricketIcon className="w-3.5 h-3.5" />
@@ -450,8 +338,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
             onClick={() => handleSportSwitch('football')}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
               isFootball
-                ? 'bg-emerald-400 text-slate-950 font-black shadow-lg shadow-emerald-500/40 scale-[1.02]'
-                : 'text-white/40 hover:text-white hover:bg-white/5'
+                ? 'bg-[#0d3a24] text-white shadow-sm'
+                : 'text-[#4b5563] hover:text-[#111827]'
             }`}
           >
             <FootballIcon className="w-3.5 h-3.5" />
@@ -461,20 +349,13 @@ export default function AudienceView({ initialSport = 'cricket' }) {
 
         {/* Right: Live Connection & Viewers */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-full px-2.5 py-1">
-            <div className={`w-2 h-2 rounded-full ${connected ? (isFootball ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-[#c9a227]') : 'bg-white/20'}`} />
-            <span className="text-white/40 text-[11px] font-medium hidden md:inline">{connected ? 'Live Feed' : 'Connecting'}</span>
+          <div className="flex items-center gap-1.5 bg-[#faf8f5] border border-[#e8e2d5] rounded-full px-2.5 py-1">
+            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+            <span className="text-[#6b7280] text-[11px] font-semibold hidden md:inline">{connected ? 'Live Feed' : 'Connecting'}</span>
           </div>
           {viewerCount > 0 && (
-            <div className={`flex items-center gap-2 border rounded-full px-2.5 py-1 ${
-              isFootball
-                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-                : 'bg-[#c9a227]/10 border-[#c9a227]/20 text-[#c9a227]'
-            }`}>
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isFootball ? 'bg-emerald-400' : 'bg-[#c9a227]'}`} />
-                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isFootball ? 'bg-emerald-400' : 'bg-[#c9a227]'}`} />
-              </span>
+            <div className="flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 text-emerald-800 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
               <span className="text-xs font-bold tabular-nums leading-none">{viewerCount} live</span>
             </div>
           )}
@@ -482,74 +363,74 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       </header>
 
       {/* Tabs */}
-      <div className={`flex border-b shrink-0 z-10 ${
-        isFootball ? 'border-emerald-500/20 bg-[#061710]/90 backdrop-blur' : 'border-[#c9a227]/15 bg-[#0a1628]'
-      }`}>
-        <button onClick={() => setTab('auction')}
-          className={`flex-1 lg:flex-none px-5 lg:px-8 py-3 text-xs lg:text-sm transition-colors ${tab === 'auction' ? activeTabStyle : 'text-white/40 hover:text-white/80'}`}>
+      <div className="flex border-b border-[#e8e2d5] bg-white shrink-0 z-10 px-4 lg:px-8">
+        <button
+          onClick={() => setTab('auction')}
+          className={`px-5 py-3 text-xs lg:text-sm font-semibold transition-all ${
+            tab === 'auction'
+              ? 'text-[#0d3a24] border-b-2 border-[#0d3a24] font-bold'
+              : 'text-[#6b7280] hover:text-[#111827]'
+          }`}
+        >
           Live {sportLabel} Auction
         </button>
-        <button onClick={() => setTab('teams')}
-          className={`flex-1 lg:flex-none px-5 lg:px-8 py-3 text-xs lg:text-sm transition-colors ${tab === 'teams' ? activeTabStyle : 'text-white/40 hover:text-white/80'}`}>
+        <button
+          onClick={() => setTab('teams')}
+          className={`px-5 py-3 text-xs lg:text-sm font-semibold transition-all ${
+            tab === 'teams'
+              ? 'text-[#0d3a24] border-b-2 border-[#0d3a24] font-bold'
+              : 'text-[#6b7280] hover:text-[#111827]'
+          }`}
+        >
           {sportLabel} Clubs & Squads
         </button>
       </div>
 
       {/* Main View Area */}
-      <div className="flex-1 min-h-0 flex flex-col p-3 lg:p-4 overflow-hidden z-10" style={{ height: 'calc(100vh - 105px)' }}>
+      <div className="flex-1 min-h-0 flex flex-col p-4 lg:p-6 overflow-hidden z-10" style={{ height: 'calc(100vh - 110px)' }}>
 
         {/* Auction Tab */}
         {tab === 'auction' && (
           <>
             {activeSession && activePlayer ? (
-              <div
-                className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 overflow-hidden min-h-0"
-                style={{ height: '100%', maxHeight: '100%' }}
-              >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0 h-full">
+                
                 {/* LEFT: Current Bid */}
                 <div className="lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-hidden">
-                  <div className={`${cardContainerBg} rounded-2xl p-5 shrink-0`}>
+                  <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 shadow-sm shrink-0">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Current Highest Bid</p>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-black tracking-wider uppercase border ${
-                        isFootball ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-[#c9a227]/20 border-[#c9a227]/40 text-[#c9a227]'
-                      }`}>
+                      <p className="text-[#6b7280] text-[10px] uppercase tracking-widest font-bold">Highest Bid</p>
+                      <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
                         Active
                       </span>
                     </div>
 
                     <div className="flex items-baseline gap-2 mb-4">
-                      <span className={`text-5xl font-black tabular-nums leading-none tracking-tight ${
-                        isFootball
-                          ? 'text-emerald-400 drop-shadow-[0_0_25px_rgba(16,185,129,0.5)]'
-                          : 'text-[#c9a227]'
-                      }`}>
+                      <span className="text-5xl font-black tabular-nums leading-none tracking-tight text-[#0d3a24]">
                         {activeSession.currentBid}
                       </span>
-                      <span className="text-white/40 text-base font-semibold">pts</span>
+                      <span className="text-[#6b7280] text-base font-semibold">pts</span>
                     </div>
 
-                    <div className={`border-t pt-3 ${isFootball ? 'border-emerald-500/15' : 'border-[#c9a227]/10'}`}>
-                      <p className="text-white/30 text-[9px] uppercase tracking-wider mb-1 font-bold">Leading Bidder</p>
-                      <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${
+                    <div className="border-t border-gray-100 pt-3.5">
+                      <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1 font-bold">Leading Bidder</p>
+                      <div className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border ${
                         activeSession.currentHighestBidderName
-                          ? (isFootball ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 shadow-md shadow-emerald-950/80' : 'bg-[#c9a227]/15 border-[#c9a227]/40 text-[#c9a227]')
-                          : 'bg-white/5 border-white/10 text-white/40'
+                          ? 'bg-[#f4efe6] border-[#e8e2d5] text-[#0d3a24] font-bold shadow-sm'
+                          : 'bg-[#faf8f5] border-[#e8e2d5] text-[#9ca3af]'
                       }`}>
                         {activeSession.currentHighestBidderName && (
-                          <span className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${isFootball ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-[#c9a227]'}`} />
+                          <span className="w-2 h-2 rounded-full bg-[#0d3a24] animate-pulse shrink-0" />
                         )}
-                        <span className="text-sm font-bold truncate">{activeSession.currentHighestBidderName || 'No bids yet'}</span>
+                        <span className="text-sm truncate font-semibold">{activeSession.currentHighestBidderName || 'No bids yet'}</span>
                       </div>
                     </div>
 
                     {finalizingState && (
-                      <div className={`mt-3 pt-3 border-t ${isFootball ? 'border-emerald-500/20' : 'border-[#c9a227]/10'}`}>
-                        <div className={`flex items-center gap-2 border rounded-xl px-3 py-2 text-xs font-bold ${
-                          isFootball ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200' : 'bg-[#c9a227]/15 border-[#c9a227]/40 text-[#c9a227]'
-                        }`}>
-                          <span className={`w-2 h-2 rounded-full animate-ping shrink-0 ${isFootball ? 'bg-emerald-400' : 'bg-[#c9a227]'}`} />
-                          <span className="truncate">Bidding Locked · Finalizing Sale</span>
+                      <div className="mt-3.5 pt-3.5 border-t border-gray-100">
+                        <div className="flex items-center gap-2 border border-amber-300 bg-amber-50 rounded-xl px-3 py-2 text-xs font-bold text-amber-900 shadow-sm animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping shrink-0" />
+                          <span className="truncate">Finalizing Sale...</span>
                         </div>
                       </div>
                     )}
@@ -557,125 +438,107 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 </div>
 
                 {/* CENTER: Player Card */}
-                <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden" style={{ height: '100%', maxHeight: '100%' }}>
+                <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden h-full">
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                     <div className="flex-1 h-full min-h-0 overflow-hidden">
                       <MysteryPlayerCard player={activePlayer} revealTokens={null} />
                     </div>
                   ) : (
-                  <div className={`relative rounded-2xl overflow-hidden shadow-2xl w-full flex flex-col justify-end border ${
-                    isFootball ? 'border-emerald-500/30 shadow-emerald-950/60' : 'border-[#c9a227]/30 shadow-black'
-                  }`} style={{ height: '100%', maxHeight: '100%' }}>
-                    {activePlayer.photo ? (
-                      <>
-                        <Image src={activePlayer.photo} alt="" fill unoptimized
-                          className="absolute inset-0 object-cover scale-110 blur-xl opacity-40 pointer-events-none"
-                          onError={() => {}} />
-                        <Image src={activePlayer.photo} alt={activePlayer.name} fill unoptimized
-                          className="absolute inset-0 object-cover"
-                          style={{ objectPosition: '50% 20%' }}
-                          loading="eager"
-                          onError={(e) => { e.target.style.display = 'none'; }} />
-                      </>
-                    ) : (
-                      <div className={`absolute inset-0 flex items-center justify-center ${isFootball ? 'bg-[#061811]' : 'bg-[#0d1e3a]'}`}>
-                        {isFootball ? (
-                          <FootballIcon className="w-20 h-20 text-emerald-400/20" />
-                        ) : (
-                          <CricketIcon className="w-20 h-20 text-[#c9a227]/15" />
-                        )}
+                    <div className="relative rounded-3xl overflow-hidden shadow-md w-full flex flex-col justify-end border border-[#e8e2d5] bg-white h-full">
+                      {activePlayer.photo ? (
+                        <>
+                          <Image
+                            src={activePlayer.photo}
+                            alt=""
+                            fill
+                            unoptimized
+                            className="absolute inset-0 object-cover scale-110 blur-xl opacity-30 pointer-events-none"
+                          />
+                          <Image
+                            src={activePlayer.photo}
+                            alt={activePlayer.name}
+                            fill
+                            unoptimized
+                            className="absolute inset-0 object-cover"
+                            style={{ objectPosition: '50% 20%' }}
+                            loading="eager"
+                          />
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#faf8f5]">
+                          {isFootball ? (
+                            <FootballIcon className="w-24 h-24 text-[#0d3a24]/20" />
+                          ) : (
+                            <CricketIcon className="w-24 h-24 text-[#c59b27]/20" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Gradient Overlay */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(13,58,36,0.2) 40%, rgba(13,58,36,0.85) 75%, rgba(13,58,36,0.98) 100%)'
+                        }}
+                      />
+
+                      {/* Base Price Badge */}
+                      <div className="absolute top-4 left-4 backdrop-blur border border-[#e8e2d5] bg-white/95 rounded-2xl px-3.5 py-2 text-center z-10 shadow-sm">
+                        <p className="text-[#6b7280] text-[9px] uppercase tracking-wider font-bold">Base Price</p>
+                        <p className="font-black text-lg text-[#0d3a24] tabular-nums leading-none">{activePlayer.basePrice} pts</p>
                       </div>
-                    )}
 
-                    {/* Gradient Overlay */}
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background: isFootball
-                          ? 'linear-gradient(to bottom, rgba(4,14,10,0.1) 0%, rgba(4,14,10,0.3) 40%, rgba(4,14,10,0.88) 70%, #040e0a 100%)'
-                          : 'linear-gradient(to bottom, rgba(10,22,40,0.1) 0%, rgba(10,22,40,0.2) 40%, rgba(10,22,40,0.85) 70%, rgba(10,22,40,0.98) 100%)'
-                      }}
-                    />
-
-                    {/* Top Badges */}
-                    <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-600/90 backdrop-blur px-3 py-1 rounded-full z-10 shadow-lg">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      <span className="text-white text-[10px] font-bold uppercase tracking-wider">Live On Pitch</span>
-                    </div>
-
-                    <div className={`absolute top-4 left-4 backdrop-blur border rounded-xl px-3 py-2 text-center z-10 ${
-                      isFootball ? 'bg-[#05140e]/90 border-emerald-500/40 text-emerald-400' : 'bg-[#0a1628]/80 border-[#c9a227]/30 text-[#c9a227]'
-                    }`}>
-                      <p className="text-white/40 text-[9px] uppercase tracking-wider font-semibold">Base Price</p>
-                      <p className="font-black text-lg tabular-nums leading-none">{activePlayer.basePrice} pts</p>
-                    </div>
-
-                    {/* Player Info Footer */}
-                    <div className="relative z-10 px-5 pb-5 pt-8">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        {displaySkills(activePlayer.skills).map(s => (
-                          <PositionPill key={s} skill={s} isFootball={isFootball} />
-                        ))}
-                        {activePlayer.gender && (
-                          <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                            activePlayer.gender === 'Female'
-                              ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30'
-                              : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                          }`}>
-                            {activePlayer.gender}
-                          </span>
-                        )}
+                      {/* Player Info Footer */}
+                      <div className="relative z-10 px-6 pb-6 pt-10 text-white">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          {displaySkills(activePlayer.skills).map(s => (
+                            <PositionPill key={s} skill={s} isFootball={isFootball} />
+                          ))}
+                          {activePlayer.gender && (
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-white/20 backdrop-blur text-white border border-white/30">
+                              {activePlayer.gender}
+                            </span>
+                          )}
+                        </div>
+                        <h1 className="text-4xl sm:text-5xl font-black uppercase leading-none tracking-tight truncate drop-shadow-md">
+                          {activePlayer.name}
+                        </h1>
                       </div>
-                      <h1 className="text-4xl sm:text-5xl font-black text-white uppercase leading-none tracking-tight mb-2 truncate">
-                        {activePlayer.name}
-                      </h1>
                     </div>
-                  </div>
                   )}
                 </div>
 
                 {/* RIGHT: Bid History */}
-                <div
-                  className={`lg:col-span-3 ${cardContainerBg} rounded-2xl overflow-hidden flex flex-col min-h-0`}
-                  style={{ height: '100%', maxHeight: '100%' }}
-                >
-                  <div className={`flex items-center justify-between px-4 py-3 border-b shrink-0 ${
-                    isFootball ? 'border-emerald-500/15' : 'border-[#c9a227]/10'
-                  }`}>
-                    <p className="text-white/60 text-xs font-bold uppercase tracking-wider">
-                      {isFootball ? 'Match Bid History' : 'Bid History'}
+                <div className="lg:col-span-3 bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden flex flex-col min-h-0 h-full shadow-sm">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5] shrink-0">
+                    <p className="text-[#111827] text-xs font-bold uppercase tracking-wider">
+                      {isFootball ? 'Match Bid Feed' : 'Live Bid Feed'}
                     </p>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
-                      isFootball ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-[#c9a227]/10 text-[#c9a227]'
-                    }`}>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#0d3a24] text-white">
                       {bidHistory.length}
                     </span>
                   </div>
-                  <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden divide-y ${
-                    isFootball ? 'divide-emerald-500/10' : 'divide-[#c9a227]/5'
-                  }`}>
+                  <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden divide-y divide-gray-100 p-2">
                     {bidHistory.length === 0 && (
-                      <p className="text-white/30 text-xs text-center py-8">No bids registered yet</p>
+                      <p className="text-[#9ca3af] text-xs text-center py-12">No bids registered yet</p>
                     )}
                     {bidHistory.map((b, i) => (
                       <div
                         key={i}
-                        className={`flex items-center justify-between px-4 py-2.5 transition-colors ${
+                        className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors ${
                           i === 0
-                            ? (isFootball ? 'bg-emerald-500/15 border-l-4 border-emerald-400' : 'bg-[#c9a227]/8 border-l-4 border-[#c9a227]')
-                            : 'hover:bg-white/5'
+                            ? 'bg-amber-50 border-l-4 border-[#c59b27] text-[#111827]'
+                            : 'hover:bg-[#faf8f5] text-[#4b5563]'
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-white/25 text-xs font-mono w-6 text-right shrink-0">#{bidHistory.length - i}</span>
-                          <span className={`text-sm font-semibold truncate ${i === 0 ? 'text-white' : 'text-white/60'}`}>{b.teamName}</span>
+                          <span className="text-[#9ca3af] text-xs font-mono w-6 text-right shrink-0">#{bidHistory.length - i}</span>
+                          <span className={`text-sm font-semibold truncate ${i === 0 ? 'text-[#111827] font-bold' : 'text-[#4b5563]'}`}>
+                            {b.teamName}
+                          </span>
                         </div>
-                        <span className={`text-sm font-black tabular-nums shrink-0 ml-2 ${
-                          i === 0
-                            ? (isFootball ? 'text-emerald-400' : 'text-[#c9a227]')
-                            : 'text-white/50'
-                        }`}>
-                          {b.amount}
+                        <span className={`text-sm font-black tabular-nums shrink-0 ml-2 ${i === 0 ? 'text-[#c59b27]' : 'text-[#0d3a24]'}`}>
+                          {b.amount} pts
                         </span>
                       </div>
                     ))}
@@ -683,54 +546,26 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 </div>
               </div>
             ) : (
-              /* EMPTY / WAITING FOR AUCTION STATE */
-              <div className={`flex-1 ${cardContainerBg} rounded-2xl flex flex-col items-center justify-center p-8 lg:p-14 text-center min-h-[420px] relative overflow-hidden`}>
-                {isFootball ? (
-                  /* Dedicated Football Stadium Center Spot Experience */
-                  <div className="flex flex-col items-center max-w-lg relative z-10">
-                    <div className="relative mb-6">
-                      {/* Pulsing Stadium Radar Rings */}
-                      <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
-                      <div className="w-24 h-24 rounded-full border-2 border-emerald-400/40 flex items-center justify-center bg-gradient-to-b from-[#092b1d] to-[#04120a] shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                        <FootballIcon className="w-12 h-12 text-emerald-400 animate-spin-slow drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]" />
-                      </div>
-                      <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 border-2 border-[#040e0a] animate-ping" />
-                    </div>
-
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-xs font-black uppercase tracking-widest mb-3">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      Pitch Ready · Live Broadcast
-                    </div>
-
-                    <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight mb-2">
-                      Football Player Draft
-                    </h2>
-                    <p className="text-white/50 text-sm max-w-md leading-relaxed mb-6">
-                      The auctioneer will call the next football player to the pitch shortly. All live bids and squad acquisitions will update in real time.
-                    </p>
-
-                    <div className="flex items-center gap-3 text-xs font-semibold text-emerald-300/80">
-                      <span className="bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-lg">
-                        ⚽ {teams.length} Football Clubs
-                      </span>
-                      <span className="bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-lg">
-                        🛡️ Squad Cap: 7
-                      </span>
-                    </div>
+              /* EMPTY / WAITING STATE */
+              <div className="flex-1 bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-8 lg:p-14 text-center min-h-[420px] shadow-sm relative overflow-hidden">
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 rounded-full border-2 border-[#0d3a24]/20 flex items-center justify-center bg-[#f4efe6] shadow-sm">
+                    {isFootball ? (
+                      <FootballIcon className="w-12 h-12 text-[#0d3a24]" />
+                    ) : (
+                      <CricketIcon className="w-12 h-12 text-[#c59b27]" />
+                    )}
                   </div>
-                ) : (
-                  /* Classic Cricket Waiting State */
-                  <div className="flex flex-col items-center max-w-md">
-                    <div className="w-20 h-20 rounded-full bg-[#c9a227]/10 border border-[#c9a227]/25 flex items-center justify-center mb-4 shadow-lg shadow-[#c9a227]/10">
-                      <CricketIcon className="w-9 h-9 text-[#c9a227]" />
-                    </div>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#c9a227]/15 border border-[#c9a227]/30 text-[#c9a227] text-xs font-bold uppercase tracking-wider mb-2">
-                      Cricket Auction
-                    </div>
-                    <p className="text-white font-bold text-xl mb-1">Waiting for Next Player</p>
-                    <p className="text-white/40 text-sm">The next cricket player will appear here shortly</p>
-                  </div>
-                )}
+                </div>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f4efe6] border border-[#e8e2d5] text-[#0d3a24] text-xs font-bold uppercase tracking-widest mb-3">
+                  <span>{sportLabel} Arena Standby</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[#111827] mb-2">
+                  Waiting for Next Player
+                </h2>
+                <p className="text-[#6b7280] text-sm max-w-md">
+                  The auctioneer will bring the next {sportLabel.toLowerCase()} star to the live stage shortly.
+                </p>
               </div>
             )}
           </>
@@ -738,96 +573,38 @@ export default function AudienceView({ initialSport = 'cricket' }) {
 
         {/* Teams Tab */}
         {tab === 'teams' && (
-          <div className="flex-1 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 content-start items-start overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pr-1">
             {teams.length === 0 ? (
-              <div className="col-span-full py-20 text-center text-white/30 text-sm">
-                No {sportLabel.toLowerCase()} teams registered yet.
+              <div className="text-center py-20 text-[#9ca3af] text-sm bg-white border border-[#e8e2d5] rounded-3xl p-8">
+                No {sportLabel.toLowerCase()} clubs registered yet.
               </div>
             ) : (
-              teams.map((team, idx) => (
-                <TeamCard key={team._id} team={team} idx={idx} isFootball={isFootball} />
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Floating Home button */}
-      <button
-        onClick={() => router.push('/')}
-        className={`fixed bottom-5 left-5 flex items-center gap-2 border rounded-full px-4 py-2 shadow-xl transition-all z-50 backdrop-blur-md ${
-          isFootball
-            ? 'bg-[#071d14]/90 border-emerald-500/40 text-emerald-300 hover:text-white hover:border-emerald-400'
-            : 'bg-[#0d1e3a]/90 border-[#c9a227]/30 text-white/60 hover:text-white hover:border-[#c9a227]/60'
-        }`}
-        aria-label="Back to home"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-        <span className="text-xs font-semibold">Home</span>
-      </button>
-
-      {/* Mystery reveal overlay */}
-      {mysteryReveal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.94)', backdropFilter: 'blur(10px)' }}>
-          <div className="flex flex-col items-center gap-5 px-6 max-w-sm w-full text-center"
-            style={{ animation: 'fadeInUp 0.5s ease forwards' }}>
-            <div className={`flex items-center gap-2 border rounded-full px-4 py-1.5 ${
-              isFootball ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300' : 'bg-purple-500/20 border-purple-500/40 text-purple-300'
-            }`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-black uppercase tracking-wider">Mystery Revealed!</span>
-            </div>
-
-            <div className={`relative w-40 h-40 rounded-2xl overflow-hidden border-2 shadow-2xl ${
-              isFootball ? 'border-emerald-400 shadow-emerald-500/30' : 'border-[#c9a227]/60 shadow-[#c9a227]/20'
-            }`}>
-              {mysteryReveal.player.photo ? (
-                <Image src={mysteryReveal.player.photo} alt={mysteryReveal.player.name} fill unoptimized
-                  className="object-cover" style={{ objectPosition: '50% 20%' }} />
-              ) : (
-                <div className={`w-full h-full flex items-center justify-center ${isFootball ? 'bg-[#061811]' : 'bg-[#0d1e3a]'}`}>
-                  <svg className="w-16 h-16 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className={`text-xs uppercase tracking-widest mb-1 ${isFootball ? 'text-emerald-400/70' : 'text-[#c9a227]/60'}`}>The mystery player was</p>
-              <h2 className="text-3xl font-black text-white uppercase leading-tight">{mysteryReveal.player.name}</h2>
-            </div>
-
-            {mysteryReveal.player.skills?.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                {displaySkills(mysteryReveal.player.skills).map(s => (
-                  <PositionPill key={s} skill={s} isFootball={isFootball} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-4">
+                {teams.map((team, idx) => (
+                  <TeamCard key={team._id} team={team} idx={idx} isFootball={isFootball} />
                 ))}
               </div>
             )}
+          </div>
+        )}
 
-            <div className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 ${
-              isFootball ? 'bg-emerald-950/60 border-emerald-500/40' : 'bg-[#c9a227]/10 border-[#c9a227]/25'
-            }`}>
-              <span className="text-white/40 text-sm">Signed by</span>
-              <span className={`font-black text-base ${isFootball ? 'text-emerald-400' : 'text-[#c9a227]'}`}>{mysteryReveal.teamName}</span>
-              <span className="text-white/40 text-sm">for</span>
-              <span className="text-white font-black text-base">{mysteryReveal.player.soldPrice} pts</span>
+      </div>
+
+      {/* Mystery Reveal Modal */}
+      {mysteryReveal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-md p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border border-gray-100">
+            <h3 className="text-xl font-bold font-serif text-[#111827] mb-1">Mystery Player Revealed!</h3>
+            <p className="text-[#0d3a24] text-xs font-semibold mb-4">Acquired by {mysteryReveal.teamName}</p>
+            <div className="relative w-36 h-36 rounded-full overflow-hidden mx-auto mb-4 border-4 border-[#ece4d0] shadow-md">
+              <Image src={mysteryReveal.player.photo} alt={mysteryReveal.player.name} fill unoptimized className="object-cover" />
             </div>
-
+            <h4 className="text-lg font-bold text-[#111827]">{mysteryReveal.player.name}</h4>
+            <p className="text-[#6b7280] text-xs mt-1 mb-6">{mysteryReveal.player.skills?.join(', ')}</p>
             <button
-              onClick={() => {
-                setMysteryReveal(null);
-                const confettiColors = isFootball
-                  ? ['#10b981', '#00f59b', '#ffffff', '#34d399', '#06b6d4']
-                  : ['#c9a227', '#f0c040', '#ffffff', '#ffd700'];
-                import('canvas-confetti').then(({ default: confetti }) => {
-                  confetti({ particleCount: 200, spread: 100, origin: { y: 0.55 }, colors: confettiColors });
-                });
-              }}
-              className={`font-black px-8 py-3 rounded-xl text-sm transition-all shadow-lg ${
-                isFootball ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300 shadow-emerald-500/30' : 'bg-[#c9a227] text-[#0a1628] hover:bg-[#f0c040]'
-              }`}>
+              onClick={() => setMysteryReveal(null)}
+              className="w-full bg-[#0d3a24] hover:bg-[#154d32] text-white font-semibold py-2.5 rounded-xl text-sm transition-all shadow-md"
+            >
               Continue
             </button>
           </div>

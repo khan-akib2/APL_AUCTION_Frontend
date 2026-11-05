@@ -17,13 +17,13 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0a1628",
+  themeColor: "#0d3a24",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <body className="min-h-full bg-[#0a1628] text-white antialiased" suppressHydrationWarning>
+      <body className="min-h-full bg-[#f8f6f0] text-[#111827] antialiased" suppressHydrationWarning>
         <Script id="extension-shield" strategy="beforeInteractive">
           {`
             // 1. Intercept and suppress errors originating from browser extensions

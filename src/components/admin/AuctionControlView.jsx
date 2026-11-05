@@ -78,216 +78,202 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   // Socket room isolation and live event listening
   useEffect(() => {
     if (!socket) return;
-    socket.emit('join:sport', sport);
+    const roomName = `auction:${sport}`;
+    socket.emit('joinRoom', { room: roomName, sport });
 
-    const matchSport = (evSport) => !evSport || evSport === sport;
+    const handlePlayerNominated = (data) => {
+      if (data.sport && data.sport !== sport) return;
+      setActiveSession(data.session);
+      setActivePlayer(data.player);
+      setSelectedPlayer(data.player);
+      setBidHistory([]);
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+      loadData();
+    };
 
-    socket.on('auction:start', ({ session, player, sport: evSport }) => {
-      if (!matchSport(evSport)) return;
-      setActiveSession(session);
-      setActivePlayer(player);
+    const handleBidPlaced = (data) => {
+      if (data.sport && data.sport !== sport) return;
+      setActiveSession(prev => prev ? {
+        ...prev,
+        currentBid: data.amount,
+        currentHighestBidder: data.teamId,
+        currentHighestBidderName: data.teamName,
+      } : prev);
+      setBidHistory(prev => [{
+        teamName: data.teamName,
+        amount: data.amount,
+        createdAt: new Date().toISOString(),
+      }, ...prev]);
+    };
+
+    const handleFinalizing = (data) => {
+      if (data.sport && data.sport !== sport) return;
+      setFinalizingState(data);
+      setFinalizingCountdown(data.countdown || 3);
+    };
+
+    const handleFinalized = (data) => {
+      if (data.sport && data.sport !== sport) return;
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+      setActiveSession(null);
+      setActivePlayer(null);
+      setSelectedPlayer(null);
+      setBidHistory([]);
+      loadData();
+    };
+
+    const handleSold = (data) => {
+      if (data.sport && data.sport !== sport) return;
+      toast(`Player SOLD to ${data.teamName} for ${data.amount} pts!`, 'success');
+      setActiveSession(null);
+      setActivePlayer(null);
       setSelectedPlayer(null);
       setBidHistory([]);
       setFinalizingState(null);
-      setFinalizingCountdown(0);
-    });
+      loadData();
+    };
 
-    socket.on('auction:bid_update', (data) => {
-      if (!matchSport(data?.sport)) return;
-      setActiveSession(prev => prev ? {
-        ...prev,
-        currentBid: data.currentBid,
-        currentHighestBidderName: data.bidderTeamName,
-        currentHighestBidder: data.bidderTeamId,
-      } : prev);
-      setBidHistory(prev => [{ teamName: data.bidderTeamName, amount: data.currentBid }, ...prev]);
-    });
-
-    socket.on('auction:finalizing', (data) => {
-      if (!matchSport(data?.sport)) return;
-      setFinalizingState(data);
-      setFinalizingCountdown(data.countdown || 3);
-    });
-
-    socket.on('auction:sold', ({ player, team, sport: evSport }) => {
-      if (!matchSport(evSport)) return;
-      setFinalizingState(null);
-      setFinalizingCountdown(0);
-      setActionLoading(false);
-      toast(`${player.name} SOLD to ${team?.name || 'highest bidder'}!`, 'success');
+    const handleUnsold = (data) => {
+      if (data.sport && data.sport !== sport) return;
+      toast('Player marked UNSOLD', 'info');
       setActiveSession(null);
       setActivePlayer(null);
+      setSelectedPlayer(null);
       setBidHistory([]);
-      loadData();
-    });
-
-    socket.on('auction:unsold', ({ player, sport: evSport }) => {
-      if (!matchSport(evSport)) return;
       setFinalizingState(null);
-      setFinalizingCountdown(0);
-      setActionLoading(false);
-      toast(`${player?.name || 'Player'} marked UNSOLD`, 'info');
-      setActiveSession(null);
-      setActivePlayer(null);
-      setBidHistory([]);
       loadData();
-    });
+    };
 
-    socket.on('players:updated', (data) => {
-      if (!data?.sport || matchSport(data.sport)) loadData();
-    });
+    socket.on('playerNominated', handlePlayerNominated);
+    socket.on('bidPlaced', handleBidPlaced);
+    socket.on('auctionFinalizing', handleFinalizing);
+    socket.on('auctionFinalized', handleFinalized);
+    socket.on('playerSold', handleSold);
+    socket.on('playerUnsold', handleUnsold);
 
     return () => {
-      socket.off('auction:start');
-      socket.off('auction:bid_update');
-      socket.off('auction:finalizing');
-      socket.off('auction:sold');
-      socket.off('auction:unsold');
-      socket.off('players:updated');
+      socket.emit('leaveRoom', { room: roomName, sport });
+      socket.off('playerNominated', handlePlayerNominated);
+      socket.off('bidPlaced', handleBidPlaced);
+      socket.off('auctionFinalizing', handleFinalizing);
+      socket.off('auctionFinalized', handleFinalized);
+      socket.off('playerSold', handleSold);
+      socket.off('playerUnsold', handleUnsold);
     };
-  }, [socket, toast, loadData, sport]);
+  }, [socket, sport, loadData, toast]);
 
-  const startBidding = async (playerIdToStart = null) => {
-    const targetPlayerId = playerIdToStart || selectedPlayer?._id;
-    if (!targetPlayerId) return toast('Select a player from the queue first', 'warning');
+  const startBidding = async (playerId) => {
+    const targetId = playerId || selectedPlayer?._id;
+    if (!targetId) return toast('Select a player to auction', 'warning');
+    if (activeSession) return toast('An auction is currently active', 'warning');
+
     setActionLoading(true);
     const res = await request('/api/auction/start', {
       method: 'POST',
-      body: JSON.stringify({ playerId: targetPlayerId, sport }),
-    });
-    setActionLoading(false);
-    if (res?.error) {
-      toast(res.error, 'error');
-    } else {
-      setActiveSession(res.session);
-      setActivePlayer(res.player);
-      setSelectedPlayer(null);
-      setBidHistory([]);
-      toast(`Auction started for ${res.player.name}`, 'success');
-    }
-  };
-
-  const markSold = async () => {
-    if (!activeSession || finalizingState || actionLoading) return;
-    if (!activeSession?.currentHighestBidder && !activeSession?.currentHighestBidderName) {
-      return toast('No bids placed yet. Use Mark Unsold instead.', 'warning');
-    }
-    setActionLoading(true);
-    const res = await request('/api/auction/sold', {
-      method: 'POST',
-      body: JSON.stringify({ sessionId: activeSession._id }),
+      body: JSON.stringify({ playerId: targetId, sport }),
     });
     setActionLoading(false);
     if (res?.error) {
       toast(res.error, 'error');
       return;
     }
-    if (res?.status === 'finalizing') {
-      setFinalizingState({
-        sessionId: activeSession._id,
-        action: 'sold',
-        leaderTeamName: activeSession.currentHighestBidderName,
-        winningBid: activeSession.currentBid,
-      });
-      setFinalizingCountdown(3);
+    toast('Live bidding started!', 'success');
+    loadData();
+  };
+
+  const markSold = async () => {
+    if (!activeSession) return;
+    if (!activeSession.currentHighestBidder) return toast('No bids placed yet', 'warning');
+    setActionLoading(true);
+    const res = await request('/api/auction/sold', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: activeSession._id, sport }),
+    });
+    setActionLoading(false);
+    if (res?.error) toast(res.error, 'error');
+    else {
+      toast('Finalizing 3-second countdown initiated...', 'info');
     }
   };
 
   const markUnsold = async () => {
-    if (!activeSession || finalizingState || actionLoading) return;
+    if (!activeSession) return;
     setActionLoading(true);
     const res = await request('/api/auction/unsold', {
       method: 'POST',
-      body: JSON.stringify({ sessionId: activeSession._id }),
+      body: JSON.stringify({ sessionId: activeSession._id, sport }),
     });
     setActionLoading(false);
-    if (res?.error) {
-      toast(res.error, 'error');
-      return;
-    }
-    if (res?.status === 'finalizing') {
-      setFinalizingState({
-        sessionId: activeSession._id,
-        action: 'unsold',
-      });
-      setFinalizingCountdown(3);
+    if (res?.error) toast(res.error, 'error');
+    else {
+      toast('Finalizing unsold...', 'info');
     }
   };
 
-  // Queue players: available players
-  const availableQueue = players
-    .filter(p => p.status === 'available')
-    .filter(p => !queueSearch.trim() || p.name.toLowerCase().includes(queueSearch.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 bg-[#f8f6f0]">
+      <Spinner size="lg" />
+    </div>
+  );
 
-  // Resale players: unsold or resold players eligible for re-trigger
-  const resalePlayers = players
-    .filter(p => ['unsold', 'resold'].includes(p.status))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>;
-
-  // Visual Theme Tokens
-  const pageBg = isFootball ? 'bg-[#040e0a]' : 'bg-[#0a1628]';
-  const panelBg = isFootball ? 'bg-[#071d14] border-emerald-500/20' : 'bg-[#0d1e3a] border-[#c9a227]/20';
-  const panelHeaderBg = isFootball ? 'bg-[#05140e] border-emerald-500/15' : 'bg-[#0a1628] border-[#c9a227]/15';
-  const accentColor = isFootball ? 'text-emerald-400' : 'text-[#c9a227]';
-  const accentBorder = isFootball ? 'border-emerald-500/30' : 'border-[#c9a227]/25';
-  const primaryBtn = isFootball
-    ? 'bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold shadow-lg shadow-emerald-500/25'
-    : 'bg-[#c9a227] hover:bg-[#f0c040] text-[#0a1628] font-bold shadow-lg shadow-[#c9a227]/20';
+  const availableQueue = players.filter(p => p.status === 'available' && p.name.toLowerCase().includes(queueSearch.toLowerCase()));
+  const resalePlayers = players.filter(p => ['unsold', 'resold'].includes(p.status));
 
   return (
-    <div className={`flex flex-col ${pageBg} text-white`} style={{ height: 'calc(100vh - 48px)' }}>
+    <div className="flex flex-col bg-[#f8f6f0] text-[#111827]" style={{ height: 'calc(100vh - 48px)' }}>
       {/* Top Title Bar */}
-      <div className="shrink-0 px-4 lg:px-6 pt-4 pb-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
-          {isFootball ? <FootballIcon className="w-5 h-5 text-emerald-400" /> : <CricketIcon className="w-5 h-5 text-[#c9a227]" />}
+      <div className="shrink-0 px-4 lg:px-8 py-4 border-b border-[#e8e2d5] bg-white flex items-center justify-between">
+        <h1 className="text-xl font-bold font-serif text-[#111827] flex items-center gap-2.5">
+          {isFootball ? (
+            <FootballIcon className="w-5 h-5 text-[#0d3a24]" />
+          ) : (
+            <CricketIcon className="w-5 h-5 text-[#c59b27]" />
+          )}
           <span>Auction Control</span>
         </h1>
         {activeSession && (
-          <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
-            isFootball ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-[#c9a227]/15 border-[#c9a227]/30 text-[#c9a227]'
-          }`}>
-            <span className={`w-2 h-2 rounded-full animate-pulse ${isFootball ? 'bg-emerald-400' : 'bg-[#c9a227]'}`} />
-            Live
+          <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <span className="w-2 h-2 rounded-full animate-pulse bg-emerald-600" />
+            Live Bidding
           </span>
         )}
       </div>
 
-      {/* Main 3-Column Content Layout (matching user screenshot) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3.5 px-4 lg:px-6 pb-4 lg:pb-6 overflow-hidden">
+      {/* Main 3-Column Content Layout */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 lg:p-6 overflow-hidden">
 
         {/* COLUMN 1 (LEFT): Queue */}
         <div className="lg:col-span-3 flex flex-col min-h-0 overflow-hidden">
-          <div className={`${panelBg} border rounded-xl flex flex-col h-full overflow-hidden shadow-xl`}>
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex flex-col h-full overflow-hidden shadow-sm">
             {/* Header with dots */}
-            <div className={`flex items-center gap-1.5 px-3.5 py-2.5 ${panelHeaderBg} border-b shrink-0`}>
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-white/35 text-xs font-mono font-medium">queue · {availableQueue.length} players</span>
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#c59b27]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+              <span className="ml-2 text-[#6b7280] text-xs font-mono font-medium">queue · {availableQueue.length} players</span>
             </div>
 
             {/* Search Input */}
-            <div className="p-2.5 shrink-0">
+            <div className="p-3 shrink-0 bg-white">
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9ca3af] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
                   value={queueSearch}
                   onChange={e => setQueueSearch(e.target.value)}
                   placeholder="Search players..."
-                  className={`w-full ${panelHeaderBg} border ${accentBorder} rounded-lg pl-8 pr-3 py-2 text-white text-xs placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors`}
+                  className="w-full bg-[#faf8f5] border border-[#e8e2d5] rounded-xl pl-8 pr-3 py-2 text-[#111827] text-xs placeholder-[#9ca3af] focus:outline-none focus:border-[#0d3a24] transition-colors"
                 />
               </div>
             </div>
 
             {/* Player List */}
-            <div className="flex-1 overflow-y-auto px-2 space-y-1 min-h-0 divide-y divide-white/5">
+            <div className="flex-1 overflow-y-auto px-2 space-y-1 min-h-0 divide-y divide-gray-100">
               {availableQueue.length === 0 && (
-                <div className="text-white/25 text-xs text-center py-12">No players in queue</div>
+                <div className="text-[#9ca3af] text-xs text-center py-12">No players in queue</div>
               )}
               {availableQueue.map(p => {
                 const isSelected = selectedPlayer?._id === p._id;
@@ -295,28 +281,28 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                   <button
                     key={p._id}
                     onClick={() => setSelectedPlayer(p)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all ${
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm transition-all ${
                       isSelected
-                        ? (isFootball ? 'bg-emerald-500/20 text-white border-l-4 border-emerald-400 font-bold' : 'bg-[#c9a227]/20 text-white border-l-4 border-[#c9a227] font-bold')
-                        : 'text-white/70 hover:bg-white/5 hover:text-white'
+                        ? 'bg-[#0d3a24]/10 text-[#0d3a24] border-l-4 border-[#0d3a24] font-bold shadow-sm'
+                        : 'text-[#4b5563] hover:bg-[#faf8f5] hover:text-[#111827]'
                     }`}
                   >
                     <div className="font-semibold text-sm truncate">{p.name}</div>
-                    <div className="text-white/30 text-xs mt-0.5">- {p.basePrice}pts</div>
+                    <div className="text-[#c59b27] text-xs font-bold mt-0.5">- {p.basePrice}pts</div>
                   </button>
                 );
               })}
             </div>
 
             {/* Fixed Bottom Button: Start Bidding */}
-            <div className="p-3 border-t border-white/10 shrink-0">
+            <div className="p-3.5 border-t border-[#e8e2d5] shrink-0 bg-[#faf8f5]">
               <button
                 onClick={() => startBidding()}
                 disabled={!selectedPlayer || Boolean(activeSession) || actionLoading}
                 className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                   selectedPlayer && !activeSession
-                    ? primaryBtn
-                    : 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                    ? 'bg-[#0d3a24] hover:bg-[#154d32] text-white shadow-md'
+                    : 'bg-stone-100 text-[#9ca3af] cursor-not-allowed border border-stone-200'
                 }`}
               >
                 {actionLoading ? <Spinner size="sm" /> : 'Start Bidding'}
@@ -327,70 +313,66 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
         {/* COLUMN 2 (CENTER): Active Auction Stage */}
         <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden">
-          <div className={`${panelBg} border rounded-xl flex-1 flex flex-col overflow-hidden shadow-xl min-h-[460px]`}>
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm min-h-[460px]">
             {/* Header with dots */}
-            <div className={`flex items-center gap-1.5 px-3.5 py-2.5 ${panelHeaderBg} border-b shrink-0`}>
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-white/35 text-xs font-mono font-medium">auction · active</span>
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#c59b27]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+              <span className="ml-2 text-[#6b7280] text-xs font-mono font-medium">auction · active stage</span>
             </div>
 
             {/* Stage Body */}
-            <div className="flex-1 p-5 lg:p-6 flex flex-col justify-between overflow-y-auto min-h-0 relative">
+            <div className="flex-1 p-6 flex flex-col justify-between overflow-y-auto min-h-0 relative">
               {activePlayer ? (
                 <>
                   {/* Top: Player Image Area with BASE Price Badge */}
-                  <div className="relative flex-1 flex flex-col items-center justify-center min-h-[220px] rounded-xl overflow-hidden mb-4 bg-black/20 border border-white/5">
+                  <div className="relative flex-1 flex flex-col items-center justify-center min-h-[220px] rounded-2xl overflow-hidden mb-5 bg-[#faf8f5] border border-[#e8e2d5]">
                     {/* BASE badge in top right */}
-                    <div className={`absolute top-3 right-3 rounded-lg px-2.5 py-1 text-center border backdrop-blur ${
-                      isFootball ? 'bg-[#05140e]/90 border-emerald-500/40 text-emerald-400' : 'bg-[#0a1628]/90 border-[#c9a227]/30 text-[#c9a227]'
-                    }`}>
-                      <p className="text-[9px] uppercase tracking-wider text-white/40 font-bold leading-none mb-0.5">BASE</p>
-                      <p className="font-black text-sm tabular-nums leading-tight">{activePlayer.basePrice}</p>
+                    <div className="absolute top-3.5 right-3.5 rounded-xl px-3 py-1.5 text-center bg-white border border-[#e8e2d5] shadow-sm">
+                      <p className="text-[9px] uppercase tracking-wider text-[#6b7280] font-bold leading-none mb-0.5">BASE</p>
+                      <p className="font-black text-sm text-[#0d3a24] tabular-nums leading-tight">{activePlayer.basePrice}</p>
                     </div>
 
                     {/* Photo or Clean Silhouette */}
                     {activePlayer.photo ? (
-                      <div className="relative w-44 h-44 rounded-2xl overflow-hidden border border-white/10 shadow-xl">
+                      <div className="relative w-44 h-44 rounded-2xl overflow-hidden border border-[#e8e2d5] shadow-md">
                         <Image src={activePlayer.photo} alt={activePlayer.name} fill unoptimized className="object-cover" />
                       </div>
                     ) : (
-                      <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                      <div className="w-28 h-28 rounded-full bg-[#f4efe6] border border-[#e8e2d5] flex items-center justify-center shadow-inner">
                         {isFootball ? (
-                          <FootballIcon className="w-12 h-12 text-emerald-400/30" />
+                          <FootballIcon className="w-12 h-12 text-[#0d3a24]/40" />
                         ) : (
-                          <CricketIcon className="w-12 h-12 text-[#c9a227]/30" />
+                          <CricketIcon className="w-12 h-12 text-[#c59b27]/40" />
                         )}
                       </div>
                     )}
                   </div>
 
-                  {/* Player Name and Gender/Role Pill */}
+                  {/* Player Name and Role Pill */}
                   <div className="mb-4">
                     <div className="mb-1">
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-600/30 text-blue-300 border border-blue-500/30 tracking-wider">
+                      <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24] border border-[#e8e2d5] tracking-wider">
                         {activePlayer.gender || (isFootball ? 'FORWARD' : 'BATSMAN')}
                       </span>
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight truncate">
+                    <h2 className="text-2xl sm:text-3xl font-black text-[#111827] uppercase tracking-tight truncate">
                       {activePlayer.name}
                     </h2>
                   </div>
 
-                  {/* Bidding Summary Row (matching user screenshot) */}
-                  <div className={`rounded-xl p-4 mb-4 border flex items-center justify-between ${
-                    isFootball ? 'bg-[#05150f] border-emerald-500/20' : 'bg-[#0a1628] border-[#c9a227]/15'
-                  }`}>
+                  {/* Bidding Summary Box */}
+                  <div className="rounded-2xl p-4 sm:p-5 mb-4 border border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-between shadow-sm">
                     <div>
-                      <p className="text-white/35 text-[10px] uppercase tracking-wider font-bold mb-0.5">CURRENT BID</p>
-                      <div className={`text-3xl sm:text-4xl font-black tabular-nums ${accentColor}`}>
-                        {activeSession?.currentBid ?? activePlayer.basePrice} <span className="text-xs font-normal text-white/40">pts</span>
+                      <p className="text-[#6b7280] text-[10px] uppercase tracking-wider font-bold mb-0.5">CURRENT BID</p>
+                      <div className="text-3xl sm:text-4xl font-black tabular-nums text-[#0d3a24]">
+                        {activeSession?.currentBid ?? activePlayer.basePrice} <span className="text-xs font-normal text-[#6b7280]">pts</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-white/35 text-[10px] uppercase tracking-wider font-bold mb-0.5">LEADING</p>
-                      <div className="text-base font-bold text-white truncate max-w-[180px]">
+                      <p className="text-[#6b7280] text-[10px] uppercase tracking-wider font-bold mb-0.5">LEADING</p>
+                      <div className="text-base font-bold text-[#c59b27] truncate max-w-[180px]">
                         {activeSession?.currentHighestBidderName || '— No bids yet —'}
                       </div>
                     </div>
@@ -398,11 +380,9 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
                   {/* Finalizing Overlay Banner */}
                   {finalizingState && (
-                    <div className={`mb-3.5 border rounded-xl p-3 flex items-center justify-between animate-pulse ${
-                      isFootball ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200' : 'bg-[#c9a227]/15 border-[#c9a227]/50 text-[#c9a227]'
-                    }`}>
+                    <div className="mb-3.5 border border-amber-300 rounded-2xl p-3 flex items-center justify-between bg-amber-50 text-amber-900 shadow-sm animate-pulse">
                       <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full animate-ping ${isFootball ? 'bg-emerald-400' : 'bg-[#c9a227]'}`} />
+                        <span className="w-2.5 h-2.5 rounded-full animate-ping bg-amber-600" />
                         <span className="text-xs font-bold">
                           Finalizing {finalizingState.action === 'sold' ? `Sale to ${finalizingState.leaderTeamName}` : 'Unsold'}...
                         </span>
@@ -416,10 +396,10 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                     <button
                       onClick={markSold}
                       disabled={!activeSession?.currentHighestBidder || actionLoading || Boolean(finalizingState)}
-                      className={`py-3 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 ${
+                      className={`py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         activeSession?.currentHighestBidder && !finalizingState
-                          ? primaryBtn
-                          : 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                          ? 'bg-[#c59b27] hover:bg-[#d8aa2b] text-white shadow-md'
+                          : 'bg-stone-100 text-[#9ca3af] cursor-not-allowed border border-stone-200'
                       }`}
                     >
                       {actionLoading ? <Spinner size="sm" /> : 'Mark Sold'}
@@ -427,7 +407,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                     <button
                       onClick={markUnsold}
                       disabled={!activeSession || actionLoading || Boolean(finalizingState)}
-                      className="bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="bg-[#f4efe6] hover:bg-[#eae3d5] text-[#374151] font-semibold py-3 rounded-xl border border-[#e8e2d5] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Mark Unsold
                     </button>
@@ -435,12 +415,16 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                 </>
               ) : (
                 /* Empty Stage */
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/30">
-                  <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-3 bg-black/20">
-                    {isFootball ? <FootballIcon className="w-8 h-8 text-emerald-400/30" /> : <CricketIcon className="w-8 h-8 text-[#c9a227]/30" />}
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#9ca3af]">
+                  <div className="w-16 h-16 rounded-full border border-[#e8e2d5] flex items-center justify-center mb-3 bg-[#faf8f5]">
+                    {isFootball ? (
+                      <FootballIcon className="w-8 h-8 text-[#0d3a24]/40" />
+                    ) : (
+                      <CricketIcon className="w-8 h-8 text-[#c59b27]/40" />
+                    )}
                   </div>
-                  <p className="text-white/60 font-bold text-sm mb-1">No Active Auction</p>
-                  <p className="text-white/30 text-xs max-w-xs">Select a player from the queue or resale list and click Start Bidding</p>
+                  <p className="text-[#111827] font-bold text-sm mb-1">No Active Auction</p>
+                  <p className="text-[#6b7280] text-xs max-w-xs">Select a player from the queue or resale list and click Start Bidding</p>
                 </div>
               )}
             </div>
@@ -448,34 +432,36 @@ export default function AuctionControlView({ sport = 'cricket' }) {
         </div>
 
         {/* COLUMN 3 (RIGHT): Two Stacked Panels (Bid-Feed & Resale) */}
-        <div className="lg:col-span-3 flex flex-col gap-3.5 min-h-0 overflow-hidden">
+        <div className="lg:col-span-3 flex flex-col gap-4 min-h-0 overflow-hidden">
 
           {/* Top Panel: Bid Feed */}
-          <div className={`${panelBg} border rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden shadow-xl`}>
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden shadow-sm">
             {/* Header with dots */}
-            <div className={`flex items-center gap-1.5 px-3.5 py-2.5 ${panelHeaderBg} border-b shrink-0`}>
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-white/35 text-xs font-mono font-medium">bid-feed · {bidHistory.length} bids</span>
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#c59b27]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+              <span className="ml-2 text-[#6b7280] text-xs font-mono font-medium">bid-feed · {bidHistory.length} bids</span>
             </div>
 
             {/* Live Bids List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 min-h-0">
               {bidHistory.length === 0 ? (
-                <div className="text-white/25 text-xs text-center py-8">No live bids placed yet</div>
+                <div className="text-[#9ca3af] text-xs text-center py-8">No live bids placed yet</div>
               ) : (
                 bidHistory.map((b, i) => (
                   <div
                     key={i}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs ${
+                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs shadow-sm ${
                       i === 0
-                        ? (isFootball ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200' : 'bg-[#c9a227]/15 border-[#c9a227]/40 text-white')
-                        : 'bg-black/20 border-white/5 text-white/70'
+                        ? 'bg-amber-50 border-amber-200 text-[#111827]'
+                        : 'bg-[#faf8f5] border-[#e8e2d5] text-[#4b5563]'
                     }`}
                   >
                     <span className="font-bold truncate max-w-[150px]">{b.teamName}</span>
-                    <span className={`font-black tabular-nums text-sm ${i === 0 ? accentColor : 'text-white/80'}`}>{b.amount}</span>
+                    <span className={`font-black tabular-nums text-sm ${i === 0 ? 'text-[#c59b27]' : 'text-[#0d3a24]'}`}>
+                      {b.amount} pts
+                    </span>
                   </div>
                 ))
               )}
@@ -483,39 +469,35 @@ export default function AuctionControlView({ sport = 'cricket' }) {
           </div>
 
           {/* Bottom Panel: Resale Queue */}
-          <div className={`${panelBg} border rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden shadow-xl`}>
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden shadow-sm">
             {/* Header with dots */}
-            <div className={`flex items-center gap-1.5 px-3.5 py-2.5 ${panelHeaderBg} border-b shrink-0`}>
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-white/35 text-xs font-mono font-medium">resale · {resalePlayers.length} players</span>
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#c59b27]/30" />
+              <span className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+              <span className="ml-2 text-[#6b7280] text-xs font-mono font-medium">resale · {resalePlayers.length} players</span>
             </div>
 
             {/* Resale Players List with Trigger Buttons */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 min-h-0">
               {resalePlayers.length === 0 ? (
-                <div className="text-white/25 text-xs text-center py-8">No players in resale queue</div>
+                <div className="text-[#9ca3af] text-xs text-center py-8">No players in resale queue</div>
               ) : (
                 resalePlayers.map(p => (
                   <div
                     key={p._id}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-black/20 border border-white/5 gap-2"
+                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-[#e8e2d5] gap-2 shadow-sm"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-bold text-xs text-white truncate">{p.name}</div>
-                      <div className="text-white/35 text-[11px] truncate">
+                      <div className="font-bold text-xs text-[#111827] truncate">{p.name}</div>
+                      <div className="text-[#6b7280] text-[11px] truncate">
                         {p.status === 'resold' ? `${p.soldTo?.name || 'Previous Team'} · ${p.soldPrice || p.basePrice} pts` : `Unsold · ${p.basePrice} pts`}
                       </div>
                     </div>
                     <button
                       onClick={() => startBidding(p._id)}
                       disabled={Boolean(activeSession) || actionLoading}
-                      className={`text-xs font-bold px-3 py-1 rounded-lg border transition-all shrink-0 ${
-                        isFootball
-                          ? 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-30'
-                          : 'border-[#c9a227]/40 text-[#c9a227] hover:bg-[#c9a227]/20 disabled:opacity-30'
-                      }`}
+                      className="text-xs font-bold px-3 py-1 rounded-lg border border-[#c59b27] bg-[#c59b27] hover:bg-[#d8aa2b] text-white shadow-sm transition-all shrink-0 disabled:opacity-40"
                     >
                       Trigger
                     </button>

@@ -14,10 +14,16 @@ export default function CaptainLayout({ children }) {
   }, [user, loading, router]);
 
   if (loading || !user) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8f6f0]">
       <Spinner size="lg" />
     </div>
   );
 
-  return <SocketProvider>{children}</SocketProvider>;
+  return (
+    <SocketProvider>
+      <div className="min-h-screen bg-[#f8f6f0] text-[#111827]">
+        {children}
+      </div>
+    </SocketProvider>
+  );
 }

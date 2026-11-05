@@ -7,16 +7,14 @@ export default function MysteryPlayerCard({ player, revealTokens = null, onRevea
   const isAudience = revealTokens === null;
 
   return (
-    <div className="relative rounded-2xl overflow-hidden shadow-2xl" style={{ minHeight: '420px', height: '55vh', maxHeight: '600px' }}>
+    <div className="relative rounded-3xl overflow-hidden shadow-lg border border-[#e8e2d5] bg-white" style={{ minHeight: '420px', height: '55vh', maxHeight: '600px' }}>
       {/* Background */}
       {cfg.blurredPhoto ? (
         <Image src={cfg.blurredPhoto} alt="mystery" fill unoptimized
-          className="absolute inset-0 object-cover scale-110 blur-2xl opacity-30 pointer-events-none" />
+          className="absolute inset-0 object-cover scale-110 blur-2xl opacity-20 pointer-events-none" />
       ) : null}
 
-      <div className="absolute inset-0 bg-linear-to-br from-[#0a1628] via-[#0d1e3a] to-[#1a0a3a]" />
-      <div className="absolute inset-0 opacity-20"
-        style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(139,92,246,0.4) 0%, transparent 70%)' }} />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#f8f6f0] via-[#faf8f5] to-[#f4efe6]" />
 
       {/* Silhouette */}
       <div className="absolute inset-0 flex items-center justify-center">
@@ -25,9 +23,9 @@ export default function MysteryPlayerCard({ player, revealTokens = null, onRevea
             <Image src={cfg.blurredPhoto} alt="mystery" fill unoptimized className="object-contain blur-md" />
           </div>
         ) : (
-          <div className="opacity-25">
-            <svg className="w-28 h-28 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={0.8}
+          <div className="opacity-20 text-[#0d3a24]">
+            <svg className="w-28 h-28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
@@ -35,30 +33,30 @@ export default function MysteryPlayerCard({ player, revealTokens = null, onRevea
       </div>
 
       {/* Mystery badge */}
-      <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-purple-600/80 backdrop-blur px-3 py-1 rounded-full">
-        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-        <span className="text-white text-[10px] font-bold uppercase tracking-wider">Mystery</span>
+      <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-[#0d3a24] text-white px-3.5 py-1.5 rounded-full shadow-sm">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#c59b27] animate-pulse" />
+        <span className="text-[10px] font-bold uppercase tracking-wider">Mystery Player</span>
       </div>
 
       {/* Base price */}
-      <div className="absolute top-4 left-4 bg-[#0a1628]/80 backdrop-blur border border-[#c9a227]/30 rounded-xl px-3 py-2 text-center">
-        <p className="text-white/40 text-[9px] uppercase tracking-wider">Base</p>
-        <p className="text-[#c9a227] font-black text-lg tabular-nums leading-none">{player?.basePrice}</p>
+      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur border border-[#e8e2d5] rounded-2xl px-3.5 py-2 text-center shadow-sm">
+        <p className="text-[#6b7280] text-[9px] uppercase tracking-wider font-semibold">Base</p>
+        <p className="text-[#0d3a24] font-black text-lg tabular-nums leading-none">{player?.basePrice}</p>
       </div>
 
       {/* Bottom overlay */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8"
-        style={{ background: 'linear-gradient(to top, rgba(10,22,40,0.98) 0%, rgba(10,22,40,0.7) 60%, transparent 100%)' }}>
+      <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-10"
+        style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.85) 60%, transparent 100%)' }}>
 
-        <p className="text-purple-400/70 text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Unknown Player</p>
-        <h1 className="text-3xl sm:text-4xl font-black text-white/20 uppercase leading-none tracking-tight mb-3">
+        <p className="text-[#c59b27] text-[10px] uppercase tracking-[0.2em] font-bold mb-1">Unknown Player</p>
+        <h1 className="text-3xl sm:text-4xl font-black text-[#111827]/30 uppercase leading-none tracking-widest mb-3">
           ? ? ? ? ?
         </h1>
 
         {/* Role hint — only after captain uses reveal token */}
         {!isAudience && revealed && cfg.roleHint && (
           <div className="flex flex-wrap gap-2 mb-3">
-            <span className="text-xs px-2.5 py-1 rounded-lg font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            <span className="text-xs px-3 py-1 rounded-full font-semibold bg-[#0d3a24]/10 text-[#0d3a24] border border-[#0d3a24]/20">
               {cfg.roleHint}
             </span>
           </div>
@@ -69,7 +67,7 @@ export default function MysteryPlayerCard({ player, revealTokens = null, onRevea
           <button
             onClick={onReveal}
             disabled={revealing || revealTokens <= 0}
-            className="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors border border-purple-500/40">
+            className="flex items-center gap-2 bg-[#0d3a24] hover:bg-[#154d32] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md">
             {revealing ? <Spinner size="sm" /> : (
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -81,7 +79,7 @@ export default function MysteryPlayerCard({ player, revealTokens = null, onRevea
         )}
 
         {!isAudience && revealed && (
-          <div className="flex items-center gap-1.5 text-green-400 text-xs font-semibold mt-1">
+          <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold mt-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
