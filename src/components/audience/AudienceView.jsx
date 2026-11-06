@@ -560,7 +560,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 </div>
 
                 {/* CENTER: Player Card (Order 1 on mobile) */}
-                <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col min-h-[350px] sm:min-h-[420px] lg:h-full overflow-hidden">
+                <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col min-h-87.5 sm:min-h-105 lg:h-full overflow-hidden">
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                     <div className="flex-1 h-full min-h-0 overflow-hidden relative">
                       <MysteryPlayerCard player={activePlayer} revealTokens={null} />
@@ -680,7 +680,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
               </div>
             ) : (
               /* EMPTY / WAITING STATE */
-              <div className="flex-1 bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-8 lg:p-14 text-center min-h-[420px] shadow-sm relative overflow-hidden">
+              <div className="flex-1 bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-8 lg:p-14 text-center min-h-105 shadow-sm relative overflow-hidden">
                 <div className="relative mb-6">
                   <div className="w-24 h-24 rounded-full border-2 border-[#0d3a24]/20 flex items-center justify-center bg-[#f4efe6] shadow-sm">
                     {isFootball ? (
