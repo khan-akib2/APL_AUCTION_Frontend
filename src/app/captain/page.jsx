@@ -54,14 +54,28 @@ export default function CaptainDashboard() {
   const [revealOverlayPlayer, setRevealOverlayPlayer] = useState(null);
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
-  const [lockReason, setLockReason] = useState(null);
+  const [isLocked, setIsLocked] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return Boolean(sessionStorage.getItem('apl_captain_locked'));
+    }
+    return false;
+  });
+  const [lockReason, setLockReason] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('apl_captain_locked') || null;
+    }
+    return null;
+  });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const bidListRef = useRef(null);
   const lockoutTriggeredRef = useRef(false);
   const isBiddingRef = useRef(false);
 
   useEffect(() => {
     lockoutTriggeredRef.current = isLocked;
+    if (!isLocked && typeof window !== 'undefined') {
+      sessionStorage.removeItem('apl_captain_locked');
+    }
   }, [isLocked]);
 
   const captainSport = team?.sport || user?.sport || 'cricket';
@@ -75,8 +89,19 @@ export default function CaptainDashboard() {
     const myTeam = teamRes?.teams?.[0] || null;
     if (myTeam) {
       setTeam(myTeam);
-      setIsLocked(Boolean(myTeam.isLocked));
-      setLockReason(myTeam.lockReason || null);
+      if (myTeam.isLocked) {
+        setIsLocked(true);
+        setLockReason(myTeam.lockReason || 'Anti-cheat violation');
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('apl_captain_locked', myTeam.lockReason || 'Anti-cheat violation');
+        }
+      } else {
+        setIsLocked(false);
+        setLockReason(null);
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('apl_captain_locked');
+        }
+      }
     }
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
@@ -120,29 +145,60 @@ export default function CaptainDashboard() {
 
   // Anti-cheat lockout handler
   const triggerLockout = useCallback(async (reason) => {
-    if (lockoutTriggeredRef.current || !team?._id) return;
+    if (lockoutTriggeredRef.current) return;
     lockoutTriggeredRef.current = true;
     setIsLocked(true);
     setLockReason(reason);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('apl_captain_locked', reason);
+      } catch { /* silent */ }
+    }
     toast(`Anti-Cheat Triggered: ${reason}`, 'error');
 
-    try {
-      await request('/api/auction/lock-captain', {
-        method: 'POST',
-        body: JSON.stringify({
-          teamId: team._id,
-          reason,
-          sport: captainSport,
-        }),
-      });
-    } catch (err) {
-      console.error('Failed to report anti-cheat lockout:', err);
+    const targetTeamId = team?._id || user?.teamId?._id || user?.teamId;
+    if (targetTeamId) {
+      try {
+        await request('/api/auction/lock-captain', {
+          method: 'POST',
+          keepalive: true,
+          body: JSON.stringify({
+            teamId: targetTeamId,
+            reason,
+            sport: captainSport,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to report anti-cheat lockout:', err);
+      }
     }
-  }, [team, captainSport, request, toast]);
+  }, [team?._id, user?.teamId, captainSport, request, toast]);
+
+  const toggleFullscreen = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+  // Track Fullscreen state & lock if exited during active round
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const inFs = Boolean(document.fullscreenElement);
+      setIsFullscreen(inFs);
+      if (!inFs && activeSession && (activeSession.status === 'active' || activeSession.status === 'finalizing') && !isLocked) {
+        triggerLockout('Exited Fullscreen Auction Mode');
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [activeSession, isLocked, triggerLockout]);
 
   // Anti-cheat detection listeners (strictly active for captains until auction ends)
   useEffect(() => {
-    const isEnforced = Boolean(team?._id && !isLocked);
+    const isEnforced = !isLocked;
     if (!isEnforced) return;
 
     // 1. Tab switch or window minimized
@@ -173,8 +229,9 @@ export default function CaptainDashboard() {
       return e.returnValue;
     };
 
-    // 5. DevTools / Inspect keyboard shortcuts
+    // 5. DevTools & Tab-Switch keyboard shortcuts block
     const handleKeyDown = (e) => {
+      // F12
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
         e.stopPropagation();
@@ -184,10 +241,38 @@ export default function CaptainDashboard() {
       }
 
       const isModifier = e.ctrlKey || e.metaKey;
+      const key = (e.key || '').toUpperCase();
+
+      // Tab switching shortcuts: Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+PageUp, Ctrl+PageDown, Ctrl+1..9
+      if (isModifier && (e.key === 'Tab' || e.key === 'PageUp' || e.key === 'PageDown' || /^[1-9]$/.test(e.key))) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        triggerLockout('Tab switch shortcut pressed (Ctrl+Tab/Number)');
+        return false;
+      }
+
+      // New tab, new window, close tab, reload: Ctrl+T, Ctrl+N, Ctrl+W, Ctrl+R
+      if (isModifier && ['T', 'N', 'W', 'R'].includes(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        triggerLockout(`Restricted browser shortcut pressed (Ctrl+${key})`);
+        return false;
+      }
+
+      // F5 reload
+      if (e.key === 'F5' || e.keyCode === 116) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        triggerLockout('Page reload attempted (F5)');
+        return false;
+      }
+
+      // DevTools / Inspect shortcuts (Ctrl+Shift+I/J/C/K/E/N/W)
       if (isModifier && e.shiftKey) {
-        const key = (e.key || '').toUpperCase();
-        // I = Inspect, J = Console, C = Element Picker, K = Firefox Console, E = Network
-        if (['I', 'J', 'C', 'K', 'E'].includes(key)) {
+        if (['I', 'J', 'C', 'K', 'E', 'N', 'W'].includes(key)) {
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation?.();
@@ -196,15 +281,13 @@ export default function CaptainDashboard() {
         }
       }
 
-      if (isModifier) {
-        const key = (e.key || '').toUpperCase();
-        if (key === 'U' || key === 'S' || key === 'P') {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation?.();
-          triggerLockout(`Restricted shortcut pressed (${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${key})`);
-          return false;
-        }
+      // Source, Save, Print
+      if (isModifier && ['U', 'S', 'P'].includes(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        triggerLockout(`Restricted shortcut pressed (${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${key})`);
+        return false;
       }
     };
 
@@ -265,7 +348,7 @@ export default function CaptainDashboard() {
       document.removeEventListener('contextmenu', handleContextMenu, true);
       window.removeEventListener('dragstart', handleDragStart, true);
     };
-  }, [isLocked, team, triggerLockout]);
+  }, [isLocked, triggerLockout]);
 
   // Socket setup
   useEffect(() => {
@@ -382,15 +465,29 @@ export default function CaptainDashboard() {
     };
 
     const handleCaptainLocked = (data) => {
-      if (data?.teamId === team?._id) {
+      const myTeamId = (team?._id || user?.teamId?._id || user?.teamId)?.toString();
+      if (data?.teamId && myTeamId && data.teamId.toString() === myTeamId) {
         setIsLocked(true);
         setLockReason(data.reason || 'Anti-cheat violation detected');
+        lockoutTriggeredRef.current = true;
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('apl_captain_locked', data.reason || 'Anti-cheat violation');
+          } catch { /* silent */ }
+        }
         toast(`⚠️ ${data.reason || 'Auction access suspended'}`, 'error');
       }
     };
 
     const handleCaptainUnlocked = (data) => {
-      if (data?.teamId === team?._id) {
+      const myTeamId = (team?._id || user?.teamId?._id || user?.teamId)?.toString();
+      if (data?.teamId && myTeamId && data.teamId.toString() === myTeamId) {
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('apl_captain_locked');
+          } catch { /* silent */ }
+        }
+        lockoutTriggeredRef.current = false;
         setIsLocked(false);
         setLockReason(null);
         toast('🎉 Your auction access has been restored by the admin!', 'success');
@@ -428,7 +525,7 @@ export default function CaptainDashboard() {
       socket.off('captain:locked', handleCaptainLocked);
       socket.off('captain:unlocked', handleCaptainUnlocked);
     };
-  }, [socket, captainSport, team?._id, loadData, toast]);
+  }, [socket, captainSport, team?._id, user?.teamId, loadData, toast]);
 
   const leaderId = typeof activeSession?.currentHighestBidder === 'object'
     ? activeSession?.currentHighestBidder?._id?.toString()
@@ -464,6 +561,15 @@ export default function CaptainDashboard() {
       } else {
         setFinalizingState(null);
         setFinalizingCountdown(0);
+        if (res?.session) {
+          setActiveSession(prev => ({
+            ...prev,
+            ...res.session,
+            currentBid: res.session.currentBid || nextBid,
+            currentHighestBidder: team?._id,
+            currentHighestBidderName: team?.name,
+          }));
+        }
         if (res?.session?.timerRemaining !== undefined) {
           setTimer({ remaining: res.session.timerRemaining, paused: false });
         }
@@ -606,7 +712,24 @@ export default function CaptainDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Fullscreen Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 border border-[#e8e2d5] bg-white hover:bg-gray-50 text-gray-700 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen Mode (Hides tabs & address bar)'}
+          >
+            <svg className="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {isFullscreen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9L4 4m0 0l5 0m-5 0l0 5m11 11l5 5m0 0l-5 0m5 0l0-5M4 20l5-5m-5 5l0-5m0 5l5 0m16-16l-5 5m5-5l-5 0m5 0l0 5" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              )}
+            </svg>
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+          </button>
+
           {/* Anti-Cheat Shield Badge */}
           <div className="flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 border border-emerald-300 bg-emerald-50 text-[#0d3a24] text-[11px] font-bold shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
