@@ -54,7 +54,14 @@ export default function CaptainDashboard() {
   const [revealOverlayPlayer, setRevealOverlayPlayer] = useState(null);
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockReason, setLockReason] = useState(null);
   const bidListRef = useRef(null);
+  const lockoutTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    lockoutTriggeredRef.current = isLocked;
+  }, [isLocked]);
 
   const captainSport = team?.sport || user?.sport || 'cricket';
 
@@ -65,7 +72,11 @@ export default function CaptainDashboard() {
       request(`/api/auction/active${sportParam}`),
     ]);
     const myTeam = teamRes?.teams?.[0] || null;
-    if (myTeam) setTeam(myTeam);
+    if (myTeam) {
+      setTeam(myTeam);
+      setIsLocked(Boolean(myTeam.isLocked));
+      setLockReason(myTeam.lockReason || null);
+    }
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
       setActivePlayer(sessionRes.session.playerId);
@@ -105,6 +116,114 @@ export default function CaptainDashboard() {
   }, [finalizingState, loadData]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Anti-cheat lockout handler
+  const triggerLockout = useCallback(async (reason) => {
+    if (lockoutTriggeredRef.current || !team?._id) return;
+    lockoutTriggeredRef.current = true;
+    setIsLocked(true);
+    setLockReason(reason);
+    toast(`Anti-Cheat Triggered: ${reason}`, 'error');
+
+    try {
+      await request('/api/auction/lock-captain', {
+        method: 'POST',
+        body: JSON.stringify({
+          teamId: team._id,
+          reason,
+          sport: captainSport,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to report anti-cheat lockout:', err);
+    }
+  }, [team?._id, captainSport, request, toast]);
+
+  // Anti-cheat detection listeners (active during live bidding rounds only)
+  useEffect(() => {
+    const isActiveAuction = Boolean(
+      activeSession &&
+      (activeSession.status === 'active' || activeSession.status === 'finalizing') &&
+      !isLocked &&
+      team?._id
+    );
+
+    if (!isActiveAuction) return;
+
+    // 1. Tab switch or window minimized
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        triggerLockout('Tab switch or browser minimized');
+      }
+    };
+
+    // 2. Window blur (switching out of the window)
+    const handleWindowBlur = () => {
+      setTimeout(() => {
+        if (document.hidden || !document.hasFocus()) {
+          triggerLockout('Switched away from auction window');
+        }
+      }, 200);
+    };
+
+    // 3. DevTools / Inspect keyboard shortcuts
+    const handleKeyDown = (e) => {
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerLockout('DevTools shortcut pressed (F12)');
+        return false;
+      }
+
+      const isModifier = e.ctrlKey || e.metaKey;
+      if (isModifier && e.shiftKey) {
+        const key = (e.key || '').toUpperCase();
+        if (key === 'I' || key === 'J' || key === 'C') {
+          e.preventDefault();
+          e.stopPropagation();
+          triggerLockout(`Inspect element shortcut pressed (${e.ctrlKey ? 'Ctrl' : 'Cmd'}+Shift+${key})`);
+          return false;
+        }
+      }
+
+      if (isModifier && (e.key || '').toUpperCase() === 'U') {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerLockout('View Source shortcut pressed (Ctrl+U)');
+        return false;
+      }
+    };
+
+    // 4. Disable right-click context menu (preventing "Inspect Element")
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    // 5. Inspect panel detection (docked devtools detection)
+    const checkDevTools = () => {
+      const threshold = 160;
+      const widthDiff = window.outerWidth - window.innerWidth;
+      const heightDiff = window.outerHeight - window.innerHeight;
+      if (widthDiff > threshold || heightDiff > threshold) {
+        triggerLockout('Inspect element / DevTools panel detected');
+      }
+    };
+
+    const devToolsInterval = setInterval(checkDevTools, 1000);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      clearInterval(devToolsInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [activeSession, isLocked, team?._id, triggerLockout]);
 
   // Socket setup
   useEffect(() => {
@@ -220,6 +339,23 @@ export default function CaptainDashboard() {
       loadData();
     };
 
+    const handleCaptainLocked = (data) => {
+      if (data?.teamId === team?._id) {
+        setIsLocked(true);
+        setLockReason(data.reason || 'Anti-cheat violation detected');
+        toast(`⚠️ ${data.reason || 'Auction access suspended'}`, 'error');
+      }
+    };
+
+    const handleCaptainUnlocked = (data) => {
+      if (data?.teamId === team?._id) {
+        setIsLocked(false);
+        setLockReason(null);
+        toast('🎉 Your auction access has been restored by the admin!', 'success');
+        loadData();
+      }
+    };
+
     socket.on('auction:start', handlePlayerNominated);
     socket.on('auction:bid_update', handleBidPlaced);
     socket.on('auction:timer', handleTimerTick);
@@ -232,6 +368,8 @@ export default function CaptainDashboard() {
     socket.on('team:token_added', (d) => {
       if (d.teamId === team?._id) setTeam(prev => prev ? { ...prev, revealTokens: d.revealTokens } : prev);
     });
+    socket.on('captain:locked', handleCaptainLocked);
+    socket.on('captain:unlocked', handleCaptainUnlocked);
 
     return () => {
       socket.emit('leaveRoom', { room: roomName, sport: captainSport });
@@ -245,11 +383,13 @@ export default function CaptainDashboard() {
       socket.off('auction:resale');
       socket.off('teams:reset');
       socket.off('team:token_added');
+      socket.off('captain:locked', handleCaptainLocked);
+      socket.off('captain:unlocked', handleCaptainUnlocked);
     };
   }, [socket, captainSport, team?._id, loadData, toast]);
 
   const placeBid = async (increment) => {
-    if (!activeSession || !team || bidding || activeSession.status === 'closed') return;
+    if (!activeSession || !team || bidding || isLocked || activeSession.status === 'closed') return;
     const nextBid = activeSession.currentBid + increment;
     if (team.budget < nextBid) return toast('Insufficient budget', 'warning');
     const maxSquad = team.teamSize || 7;
@@ -279,7 +419,7 @@ export default function CaptainDashboard() {
   };
 
   const handleReveal = async () => {
-    if (!activePlayer || revealing) return;
+    if (!activePlayer || revealing || isLocked) return;
     setRevealing(true);
     let res = await request(`/api/players/${activePlayer._id}/reveal`, {
       method: 'POST',
@@ -317,10 +457,78 @@ export default function CaptainDashboard() {
     </div>
   );
 
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-[#0d131f] text-white flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
+        {/* Glowing background accents */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-red-800/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-md w-full bg-[#162032] border border-red-500/30 rounded-3xl p-8 text-center shadow-2xl relative z-10">
+          {/* Lock Icon */}
+          <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shadow-inner">
+            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+
+          <div className="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/30 mb-3">
+            Anti-Cheat Violation
+          </div>
+
+          <h1 className="text-2xl font-bold font-serif text-white mb-2">
+            Auction Access Suspended
+          </h1>
+
+          <p className="text-gray-300 text-xs sm:text-sm leading-relaxed mb-6">
+            You were removed from live bidding for switching tabs or attempting to open Developer Tools during an active round.
+          </p>
+
+          <div className="bg-[#0b101b] border border-red-500/20 rounded-2xl p-4 mb-6 text-left space-y-2">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">Violation Reason</span>
+              <span className="text-red-400 font-mono text-xs font-semibold block mt-0.5 break-words">
+                {lockReason || 'Tab switch or Inspect element detected'}
+              </span>
+            </div>
+            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-gray-400">Team:</span>
+              <span className="text-white font-bold">{team?.name}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-amber-300 text-xs font-medium mb-6 bg-amber-500/10 py-3 px-4 rounded-xl border border-amber-500/20">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+            <span>Waiting for Auction Admin to re-admit you...</span>
+          </div>
+
+          <p className="text-[11px] text-gray-400 mb-6 leading-relaxed">
+            Please ask the Admin to unlock your team on the auction board. This screen will automatically resume once approved.
+          </p>
+
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => loadData()}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
+            >
+              Check Status
+            </button>
+            <button
+              onClick={() => { logout(); router.push('/login'); }}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isLeading = activeSession?.currentHighestBidder === team._id;
   const isTimeEnded = timer.remaining !== null && timer.remaining <= 0;
   const isTimerPaused = Boolean(timer.paused);
-  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed' && !isTimeEnded && !isTimerPaused;
+  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && !isLocked && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed' && !isTimeEnded && !isTimerPaused;
   const budgetPct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
 
   return (

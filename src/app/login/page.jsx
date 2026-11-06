@@ -75,8 +75,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full bg-[#f4efe6] flex flex-col md:flex-row relative overflow-hidden select-none">
       
-      {/* LEFT SECTION: Full-height Dark Forest Green Panel with Angled Edge */}
-      <div className="relative w-full md:w-[42%] lg:w-[40%] bg-[#0d3a24] text-white flex flex-col items-center justify-between p-8 sm:p-12 md:py-16 md:px-10 shrink-0 min-h-[380px] md:min-h-screen z-10 overflow-hidden shadow-2xl">
+      {/* LEFT SECTION: Full-height Dark Forest Green Panel with Angled Edge (Hidden on mobile/phone view) */}
+      <div className="hidden md:flex relative w-full md:w-[42%] lg:w-[40%] bg-[#0d3a24] text-white flex-col items-center justify-between p-8 sm:p-12 md:py-16 md:px-10 shrink-0 min-h-screen z-10 overflow-hidden shadow-2xl">
         
         {/* Angled / Slanted Right Border Divider on Desktop */}
         <div 
@@ -114,7 +114,7 @@ export default function LoginPage() {
           <div className="text-[#d8b04a] text-xl sm:text-2xl font-serif font-bold tracking-wide mt-1">
             Season 8
           </div>
-          <p className="text-[#c5d5cb]/85 text-xs sm:text-sm leading-relaxed max-w-[260px] mx-auto mt-4 font-light">
+          <p className="text-[#c5d5cb]/85 text-xs sm:text-sm leading-relaxed max-w-65 mx-auto mt-4 font-light">
             Sign in to manage or participate in the auction.
           </p>
         </div>
@@ -141,17 +141,32 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT SECTION: Full-height Warm Cream Area with Floating White Card */}
-      <div className="flex-1 bg-[#f4efe6] flex items-center justify-center p-6 sm:p-10 lg:p-16 relative min-h-screen">
+      <div className="flex-1 bg-[#f4efe6] flex items-center justify-center p-4 sm:p-10 lg:p-16 relative min-h-screen">
         
         {/* Background ambient accents */}
         <div className="absolute top-10 right-10 w-96 h-96 rounded-full bg-[#ebe3d3] blur-3xl pointer-events-none" />
         <div className="absolute bottom-10 left-10 w-96 h-96 rounded-full bg-[#e8ded0] blur-3xl pointer-events-none" />
 
         {/* Floating White Card */}
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 sm:p-10 shadow-2xl shadow-stone-900/10 border border-[#e8e2d5] relative z-10">
+        <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-10 shadow-2xl shadow-stone-900/10 border border-[#e8e2d5] relative z-10">
           
           {/* Header */}
           <div className="mb-6">
+            <div className="flex items-center gap-2.5 mb-3.5 md:hidden">
+              <div className="relative w-9 h-9 shrink-0">
+                <Image
+                  src="/APL.png"
+                  alt="APL Season 8"
+                  fill
+                  sizes="36px"
+                  className="object-contain"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#0d3a24] block leading-none">APL Season 8</span>
+                <span className="text-[11px] text-[#6b7280] block mt-0.5">Auction Portal</span>
+              </div>
+            </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#111827] tracking-tight">
               Sign In
             </h2>

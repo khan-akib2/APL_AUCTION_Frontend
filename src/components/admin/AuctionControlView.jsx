@@ -38,6 +38,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   const sportLabel = isFootball ? 'Football' : 'Cricket';
 
   const [players, setPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [activePlayer, setActivePlayer] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -52,11 +53,13 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   const [liveTimerInput, setLiveTimerInput] = useState('');
 
   const loadData = useCallback(async () => {
-    const [pRes, sRes] = await Promise.all([
+    const [pRes, sRes, tRes] = await Promise.all([
       request(`/api/players?pageSize=500&sport=${sport}`),
       request(`/api/auction/active?sport=${sport}`),
+      request(`/api/teams?sport=${sport}`),
     ]);
     if (pRes) setPlayers(pRes.players || []);
+    if (tRes?.teams) setTeams(tRes.teams);
     if (sRes?.session) {
       setActiveSession(sRes.session);
       setActivePlayer(sRes.session.playerId);
@@ -219,6 +222,27 @@ export default function AuctionControlView({ sport = 'cricket' }) {
     socket.on('auction:resale', () => loadData());
     socket.on('teams:reset', () => loadData());
 
+    const handleCaptainLocked = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      toast(`⚠️ Team ${data.teamName} captain locked: ${data.reason}`, 'warning');
+      setTeams(prev => {
+        const exists = prev.some(t => t._id === data.teamId);
+        if (exists) {
+          return prev.map(t => t._id === data.teamId ? { ...t, isLocked: true, lockReason: data.reason, lockedAt: data.lockedAt } : t);
+        }
+        return [...prev, { _id: data.teamId, name: data.teamName, isLocked: true, lockReason: data.reason, lockedAt: data.lockedAt }];
+      });
+    };
+
+    const handleCaptainUnlocked = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      toast(`✅ Team ${data.teamName} captain unlocked by admin`, 'success');
+      setTeams(prev => prev.map(t => t._id === data.teamId ? { ...t, isLocked: false, lockReason: null, lockedAt: null } : t));
+    };
+
+    socket.on('captain:locked', handleCaptainLocked);
+    socket.on('captain:unlocked', handleCaptainUnlocked);
+
     return () => {
       socket.emit('leaveRoom', { room: roomName, sport });
       socket.off('auction:start', handlePlayerNominated);
@@ -230,8 +254,25 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       socket.off('players:updated');
       socket.off('auction:resale');
       socket.off('teams:reset');
+      socket.off('captain:locked', handleCaptainLocked);
+      socket.off('captain:unlocked', handleCaptainUnlocked);
     };
   }, [socket, sport, loadData, toast]);
+
+  const unlockCaptain = async (teamId) => {
+    setActionLoading(true);
+    const res = await request('/api/auction/unlock-captain', {
+      method: 'POST',
+      body: JSON.stringify({ teamId }),
+    });
+    setActionLoading(false);
+    if (res?.error) {
+      toast(res.error, 'error');
+    } else {
+      toast('Captain unlocked and re-admitted to the auction!', 'success');
+      setTeams(prev => prev.map(t => t._id === teamId ? { ...t, isLocked: false, lockReason: null, lockedAt: null } : t));
+    }
+  };
 
   const startBidding = async (playerId) => {
     const targetId = playerId || selectedPlayer?._id;
@@ -363,6 +404,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
   const availableQueue = players.filter(p => p.status === 'available' && p.name.toLowerCase().includes(queueSearch.toLowerCase()));
   const resalePlayers = players.filter(p => ['unsold', 'resold'].includes(p.status));
+  const lockedTeams = teams.filter(t => t.isLocked);
 
   return (
     <div className="flex flex-col bg-[#f8f6f0] text-[#111827]" style={{ height: 'calc(100vh - 48px)' }}>
@@ -383,6 +425,38 @@ export default function AuctionControlView({ sport = 'cricket' }) {
           </span>
         )}
       </div>
+
+      {/* Anti-Cheat Alert Banner for Locked Captains */}
+      {lockedTeams.length > 0 && (
+        <div className="shrink-0 bg-red-50 border-b border-red-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+            <span className="flex h-3 w-3 relative shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <span className="text-xs font-black text-red-900 uppercase tracking-wider">
+              Anti-Cheat Lockouts ({lockedTeams.length}):
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {lockedTeams.map(t => (
+                <div key={t._id} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-red-200 shadow-xs text-xs">
+                  <span className="font-bold text-[#111827]">{t.name}</span>
+                  <span className="text-red-600 font-mono text-[11px] bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
+                    {t.lockReason || 'Tab switch / Inspect'}
+                  </span>
+                  <button
+                    onClick={() => unlockCaptain(t._id)}
+                    disabled={actionLoading}
+                    className="ml-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    Unlock / Allow
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main 3-Column Content Layout */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 lg:p-6 overflow-hidden">
@@ -518,7 +592,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
         {/* COLUMN 2 (CENTER): Active Auction Stage */}
         <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden">
-          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm min-h-[460px]">
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm min-h-115">
             {/* Header with dots */}
             <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
@@ -532,7 +606,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
               {activePlayer ? (
                 <>
                   {/* Active Player Card with Full Bleed Photo & Overlays matching Image 2 */}
-                  <div className="relative rounded-3xl overflow-hidden shadow-md flex-1 min-h-[300px] border border-[#e8e2d5] bg-white flex flex-col justify-end mb-4">
+                  <div className="relative rounded-3xl overflow-hidden shadow-md flex-1 min-h-75 border border-[#e8e2d5] bg-white flex flex-col justify-end mb-4">
                     {activePlayer.photo ? (
                       <>
                         <Image
@@ -617,7 +691,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                     )}
                     <div className="text-right">
                       <p className="text-[#6b7280] text-[10px] uppercase tracking-wider font-bold mb-0.5">LEADING</p>
-                      <div className="text-base font-bold text-[#c59b27] truncate max-w-[180px]">
+                      <div className="text-base font-bold text-[#c59b27] truncate max-w-45">
                         {activeSession?.currentHighestBidderName || '— No bids yet —'}
                       </div>
                     </div>
@@ -794,7 +868,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                         : 'bg-[#faf8f5] border-[#e8e2d5] text-[#4b5563]'
                     }`}
                   >
-                    <span className="font-bold truncate max-w-[150px]">{b.teamName}</span>
+                    <span className="font-bold truncate max-w-37.5">{b.teamName}</span>
                     <span className={`font-black tabular-nums text-sm ${i === 0 ? 'text-[#c59b27]' : 'text-[#0d3a24]'}`}>
                       {b.amount} pts
                     </span>

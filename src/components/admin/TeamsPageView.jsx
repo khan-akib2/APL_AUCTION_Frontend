@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 import { useToast } from '@/components/Toast';
 import Spinner from '@/components/Spinner';
 import Image from 'next/image';
@@ -139,6 +140,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const { request } = useApi();
   const { token } = useAuth();
   const toast = useToast();
+  const socket = useSocket();
   const [teams, setTeams] = useState([]);
   const [captains, setCaptains] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -178,6 +180,17 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   }, [request, sport]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => load();
+    socket.on('captain:locked', handleUpdate);
+    socket.on('captain:unlocked', handleUpdate);
+    return () => {
+      socket.off('captain:locked', handleUpdate);
+      socket.off('captain:unlocked', handleUpdate);
+    };
+  }, [socket, load]);
 
   const openAdd = () => {
     setForm({ ...emptyForm, budget: 1000, teamSize: 7 });
@@ -434,7 +447,14 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                               </div>
                             )}
                             <div className="min-w-0">
-                              <h3 className="text-[#111827] font-bold text-sm truncate group-hover:text-[#0d3a24] transition-colors">{team.name}</h3>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="text-[#111827] font-bold text-sm truncate group-hover:text-[#0d3a24] transition-colors">{team.name}</h3>
+                                {team.isLocked && (
+                                  <span className="text-[10px] font-bold uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200" title={team.lockReason || 'Anti-cheat violation'}>
+                                    Locked
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[#6b7280] text-xs truncate">
                                 {team.captainId?.name || <span className="text-[#9ca3af] italic">No captain</span>}
                               </p>
@@ -459,6 +479,26 @@ export default function TeamsPageView({ sport = 'cricket' }) {
 
                         {/* Card actions */}
                         <div className="pt-2 border-t border-gray-100 flex flex-col gap-1.5">
+                          {team.isLocked && (
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const res = await request('/api/auction/unlock-captain', {
+                                  method: 'POST',
+                                  body: JSON.stringify({ teamId: team._id }),
+                                });
+                                if (res?.error) toast(res.error, 'error');
+                                else {
+                                  toast(`${team.name} captain unlocked!`, 'success');
+                                  load();
+                                }
+                              }}
+                              className="w-full text-xs py-1.5 rounded-lg font-bold transition-colors flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                            >
+                              <span>Unlock Captain</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={(e) => {

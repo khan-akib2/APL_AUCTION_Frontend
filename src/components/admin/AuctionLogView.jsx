@@ -73,12 +73,24 @@ export default function AuctionLogView({ sport = 'cricket' }) {
                     <div key={log._id} className="px-4 py-3.5 flex items-start justify-between gap-3 hover:bg-[#faf8f5] transition-colors">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24]">
-                            {log.action?.replace('_', ' ')}
+                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                            log.action === 'captain_locked'
+                              ? 'bg-red-50 text-red-700 border border-red-200'
+                              : log.action === 'captain_unlocked'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-[#f4efe6] text-[#0d3a24]'
+                          }`}>
+                            {log.action?.replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <div className="text-[#111827] font-semibold text-sm truncate">{log.playerId?.name || '—'}</div>
-                        <div className="text-[#6b7280] text-xs">{log.teamId?.name || '—'}</div>
+                        {log.details ? (
+                          <div className="text-xs text-gray-700 mt-1 font-medium">{log.details}</div>
+                        ) : (
+                          <>
+                            <div className="text-[#111827] font-semibold text-sm truncate">{log.playerId?.name || '—'}</div>
+                            <div className="text-[#6b7280] text-xs">{log.teamId?.name || '—'}</div>
+                          </>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-[#c59b27] text-sm font-bold">{log.amount ? `${log.amount} pts` : '—'}</div>
@@ -114,9 +126,20 @@ export default function AuctionLogView({ sport = 'cricket' }) {
                             {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24]">
-                              {log.action?.replace('_', ' ')}
+                            <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                              log.action === 'captain_locked'
+                                ? 'bg-red-50 text-red-700 border border-red-200'
+                                : log.action === 'captain_unlocked'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-[#f4efe6] text-[#0d3a24]'
+                            }`}>
+                              {log.action?.replace(/_/g, ' ')}
                             </span>
+                            {log.details && (
+                              <div className="text-[11px] text-gray-500 mt-0.5 max-w-xs truncate" title={log.details}>
+                                {log.details}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-[#111827] font-semibold">{log.playerId?.name || '—'}</td>
                           <td className="px-4 py-3 text-[#4b5563]">{log.teamId?.name || '—'}</td>
