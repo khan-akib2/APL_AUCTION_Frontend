@@ -642,7 +642,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                               <path d="M8 5v14l11-7z" />
                             </svg>
-                            <span>Resume Timer ({timer.remaining}s)</span>
+                            <span>{timer.remaining === 0 ? 'Resume Timer (+Default)' : `Resume Timer (${timer.remaining}s)`}</span>
                           </>
                         ) : (
                           <>
@@ -726,11 +726,19 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                       disabled={!activeSession?.currentHighestBidder || actionLoading || Boolean(finalizingState)}
                       className={`py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         activeSession?.currentHighestBidder && !finalizingState
-                          ? 'bg-[#c59b27] hover:bg-[#d8aa2b] text-white shadow-md'
+                          ? timer.remaining === 0
+                            ? 'bg-[#c59b27] hover:bg-[#d8aa2b] text-white shadow-lg ring-2 ring-[#c59b27]/60 animate-pulse'
+                            : 'bg-[#c59b27] hover:bg-[#d8aa2b] text-white shadow-md'
                           : 'bg-stone-100 text-[#9ca3af] cursor-not-allowed border border-stone-200'
                       }`}
                     >
-                      {actionLoading ? <Spinner size="sm" /> : 'Mark Sold'}
+                      {actionLoading ? (
+                        <Spinner size="sm" />
+                      ) : timer.remaining === 0 && activeSession?.currentHighestBidder ? (
+                        `Mark Sold (${activeSession.currentHighestBidderName} · ${activeSession.currentBid} pts)`
+                      ) : (
+                        'Mark Sold'
+                      )}
                     </button>
                     <button
                       onClick={markUnsold}

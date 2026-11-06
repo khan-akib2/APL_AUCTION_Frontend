@@ -318,7 +318,9 @@ export default function CaptainDashboard() {
   );
 
   const isLeading = activeSession?.currentHighestBidder === team._id;
-  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed';
+  const isTimeEnded = timer.remaining !== null && timer.remaining <= 0;
+  const isTimerPaused = Boolean(timer.paused);
+  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed' && !isTimeEnded && !isTimerPaused;
   const budgetPct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
 
   return (
@@ -417,7 +419,15 @@ export default function CaptainDashboard() {
                   {bidding && <div className="flex justify-center"><Spinner size="sm" /></div>}
                   {!canBid && activeSession && (
                     <p className="text-center text-[#9ca3af] text-[11px] pt-1 font-medium">
-                      {(team?.playerCount || 0) >= (team?.teamSize || 7) ? `Squad full (${team?.teamSize || 7}/${team?.teamSize || 7})` : isLeading ? 'You are leading the bid' : 'Insufficient budget'}
+                      {isTimeEnded
+                        ? 'Bidding time ended — Waiting for admin'
+                        : isTimerPaused
+                        ? 'Bidding paused by admin'
+                        : (team?.playerCount || 0) >= (team?.teamSize || 7)
+                        ? `Squad full (${team?.teamSize || 7}/${team?.teamSize || 7})`
+                        : isLeading
+                        ? 'You are leading the bid'
+                        : 'Insufficient budget'}
                     </p>
                   )}
                 </div>
