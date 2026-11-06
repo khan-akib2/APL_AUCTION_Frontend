@@ -288,6 +288,10 @@ export default function AudienceView({ initialSport = 'cricket' }) {
         return [{ teamName: bidderName, amount: numAmt }, ...prev];
       });
 
+      if (data.timerRemaining !== undefined) {
+        setTimer({ remaining: data.timerRemaining, duration: data.duration, paused: false });
+      }
+
       setFinalizingState(null);
       setFinalizingCountdown(0);
     };

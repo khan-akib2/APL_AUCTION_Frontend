@@ -162,6 +162,9 @@ export default function CaptainDashboard() {
       if (bidListRef.current) {
         bidListRef.current.scrollTop = 0;
       }
+      if (data.timerRemaining !== undefined) {
+        setTimer({ remaining: data.timerRemaining, paused: false });
+      }
       setFinalizingState(null);
       setFinalizingCountdown(0);
     };
@@ -269,6 +272,9 @@ export default function CaptainDashboard() {
     } else {
       setFinalizingState(null);
       setFinalizingCountdown(0);
+      if (res?.session?.timerRemaining !== undefined) {
+        setTimer({ remaining: res.session.timerRemaining, paused: false });
+      }
     }
   };
 
@@ -407,16 +413,6 @@ export default function CaptainDashboard() {
                       );
                     })}
                   </div>
-
-                  {finalizingState && (
-                    <div className="px-3 py-1.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-bold animate-pulse">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
-                        <span>Finalizing sale...</span>
-                      </div>
-                      <span className="font-mono text-sm">{finalizingCountdown}s</span>
-                    </div>
-                  )}
 
                   {bidding && <div className="flex justify-center"><Spinner size="sm" /></div>}
                   {!canBid && activeSession && (

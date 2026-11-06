@@ -160,6 +160,10 @@ export default function AuctionControlView({ sport = 'cricket' }) {
         }, ...prev];
       });
 
+      if (data.timerRemaining !== undefined) {
+        setTimer({ remaining: data.timerRemaining, paused: false });
+      }
+
       setFinalizingState(null);
       setFinalizingCountdown(0);
     };
