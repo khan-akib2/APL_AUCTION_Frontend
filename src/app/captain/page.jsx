@@ -69,6 +69,7 @@ export default function CaptainDashboard() {
   const [soldAnnouncement, setSoldAnnouncement] = useState(null);
   const [lastSold, setLastSold] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [isLocked, setIsLocked] = useState(() => {
     if (typeof window !== "undefined") {
       return Boolean(
@@ -96,6 +97,7 @@ export default function CaptainDashboard() {
 
   useEffect(() => {
     mountTimeRef.current = Date.now();
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -104,7 +106,7 @@ export default function CaptainDashboard() {
       sessionStorage.removeItem("apl_captain_locked");
       localStorage.removeItem("apl_captain_locked");
     }
-  }, [isLocked, triggerLockout]);
+  }, [isLocked]);
 
   const captainSport = team?.sport || user?.sport || "cricket";
 
@@ -771,7 +773,7 @@ export default function CaptainDashboard() {
     }
   };
 
-  if (loading)
+  if (!mounted || loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8f6f0]">
         <Spinner size="lg" />
@@ -888,7 +890,7 @@ export default function CaptainDashboard() {
       document.documentElement?.msRequestFullscreen,
     );
 
-  if (isFsSupported && !isFullscreen && !loading) {
+  if (mounted && isFsSupported && !isFullscreen && !loading) {
     return (
       <div className="min-h-screen bg-[#0d131f] text-white flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -992,11 +994,11 @@ export default function CaptainDashboard() {
     Boolean(team) &&
     !isLeading &&
     !isLocked &&
-    mySquad.length < (team.teamSize || 7) &&
-    activeSession.status !== "closed" &&
+    mySquad.length < (team?.teamSize || 7) &&
+    activeSession?.status !== "closed" &&
     !isTimeEnded &&
     !isTimerPaused;
-  const budgetPct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
+  const budgetPct = Math.round(((team?.pointsSpent || 0) / 1000) * 100);
 
   return (
     <div className="min-h-screen bg-[#f8f6f0] text-[#111827] flex flex-col font-sans select-none">
@@ -1007,7 +1009,7 @@ export default function CaptainDashboard() {
             <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#e8e2d5] bg-[#faf8f5] shrink-0 p-0.5">
               <Image
                 src={team.logo}
-                alt={team.name}
+                alt={team.name || "Team"}
                 fill
                 unoptimized
                 className="object-contain"
@@ -1117,7 +1119,7 @@ export default function CaptainDashboard() {
                   <div className="grid grid-cols-4 gap-2">
                     {[1, 3, 5, 10].map((amt) => {
                       const nextBid = activeSession.currentBid + amt;
-                      const canBidAmt = canBid && team.budget >= nextBid;
+                      const canBidAmt = canBid && (team?.budget || 0) >= nextBid;
                       return (
                         <button
                           key={amt}
