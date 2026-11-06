@@ -139,16 +139,10 @@ export default function CaptainDashboard() {
     }
   }, [team, captainSport, request, toast]);
 
-  // Anti-cheat detection listeners (active during live bidding rounds only)
+  // Anti-cheat detection listeners (strictly active for captains until auction ends)
   useEffect(() => {
-    const isActiveAuction = Boolean(
-      activeSession &&
-      (activeSession.status === 'active' || activeSession.status === 'finalizing') &&
-      !isLocked &&
-      team?._id
-    );
-
-    if (!isActiveAuction) return;
+    const isEnforced = Boolean(team?._id && !isLocked);
+    if (!isEnforced) return;
 
     // 1. Tab switch or window minimized
     const handleVisibilityChange = () => {
@@ -157,20 +151,33 @@ export default function CaptainDashboard() {
       }
     };
 
-    // 2. Window blur (switching out of the window)
+    // 2. Window blur (switching out of the window or clicking to another app)
     const handleWindowBlur = () => {
       setTimeout(() => {
         if (document.hidden || !document.hasFocus()) {
           triggerLockout('Switched away from auction window');
         }
-      }, 200);
+      }, 150);
     };
 
-    // 3. DevTools / Inspect keyboard shortcuts
+    // 3. Page hide / tab navigation
+    const handlePageHide = () => {
+      triggerLockout('Navigated away from auction tab');
+    };
+
+    // 4. Prompt warning on attempt to close or reload tab
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = 'Warning: Navigating away will lock you out of the auction.';
+      return e.returnValue;
+    };
+
+    // 5. DevTools / Inspect keyboard shortcuts
     const handleKeyDown = (e) => {
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation?.();
         triggerLockout('DevTools shortcut pressed (F12)');
         return false;
       }
@@ -178,52 +185,86 @@ export default function CaptainDashboard() {
       const isModifier = e.ctrlKey || e.metaKey;
       if (isModifier && e.shiftKey) {
         const key = (e.key || '').toUpperCase();
-        if (key === 'I' || key === 'J' || key === 'C') {
+        // I = Inspect, J = Console, C = Element Picker, K = Firefox Console, E = Network
+        if (['I', 'J', 'C', 'K', 'E'].includes(key)) {
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation?.();
           triggerLockout(`Inspect element shortcut pressed (${e.ctrlKey ? 'Ctrl' : 'Cmd'}+Shift+${key})`);
           return false;
         }
       }
 
-      if (isModifier && (e.key || '').toUpperCase() === 'U') {
-        e.preventDefault();
-        e.stopPropagation();
-        triggerLockout('View Source shortcut pressed (Ctrl+U)');
-        return false;
+      if (isModifier) {
+        const key = (e.key || '').toUpperCase();
+        if (key === 'U' || key === 'S' || key === 'P') {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation?.();
+          triggerLockout(`Restricted shortcut pressed (${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${key})`);
+          return false;
+        }
       }
     };
 
-    // 4. Disable right-click context menu (preventing "Inspect Element")
+    // 6. Complete block of context menu (Right-click Inspect disabled everywhere)
     const handleContextMenu = (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      return false;
     };
 
-    // 5. Inspect panel detection (docked devtools detection)
+    // 7. Prevent drag and drop
+    const handleDragStart = (e) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // 8. Continuous DevTools detection (Docked & Undocked)
     const checkDevTools = () => {
+      // Check docked resize
       const threshold = 160;
       const widthDiff = window.outerWidth - window.innerWidth;
       const heightDiff = window.outerHeight - window.innerHeight;
       if (widthDiff > threshold || heightDiff > threshold) {
         triggerLockout('Inspect element / DevTools panel detected');
+        return;
       }
+
+      // Check undocked console with getter trap
+      const detector = new Image();
+      Object.defineProperty(detector, 'id', {
+        get: () => {
+          triggerLockout('DevTools console inspection detected');
+        },
+      });
+      console.log('%c', detector);
+      console.clear();
     };
 
-    const devToolsInterval = setInterval(checkDevTools, 1000);
+    const devToolsInterval = setInterval(checkDevTools, 800);
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('contextmenu', handleContextMenu, true);
+    document.addEventListener('contextmenu', handleContextMenu, true);
+    window.addEventListener('dragstart', handleDragStart, true);
 
     return () => {
       clearInterval(devToolsInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('contextmenu', handleContextMenu, true);
+      document.removeEventListener('contextmenu', handleContextMenu, true);
+      window.removeEventListener('dragstart', handleDragStart, true);
     };
-  }, [activeSession, isLocked, team?._id, triggerLockout]);
+  }, [isLocked, team, triggerLockout]);
 
   // Socket setup
   useEffect(() => {
@@ -487,7 +528,7 @@ export default function CaptainDashboard() {
           <div className="bg-[#0b101b] border border-red-500/20 rounded-2xl p-4 mb-6 text-left space-y-2">
             <div>
               <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">Violation Reason</span>
-              <span className="text-red-400 font-mono text-xs font-semibold block mt-0.5 break-words">
+              <span className="text-red-400 font-mono text-xs font-semibold block mt-0.5 wrap-break-word">
                 {lockReason || 'Tab switch or Inspect element detected'}
               </span>
             </div>
@@ -532,7 +573,7 @@ export default function CaptainDashboard() {
   const budgetPct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
 
   return (
-    <div className="min-h-screen bg-[#f8f6f0] text-[#111827] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f8f6f0] text-[#111827] flex flex-col font-sans select-none">
       {/* Header */}
       <header className="bg-white border-b border-[#e8e2d5] px-4 lg:px-8 h-16 flex items-center justify-between sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
@@ -551,7 +592,13 @@ export default function CaptainDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          {/* Anti-Cheat Shield Badge */}
+          <div className="flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 border border-emerald-300 bg-emerald-50 text-[#0d3a24] text-[11px] font-bold shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+            <span>Anti-Cheat Active</span>
+          </div>
+
           {/* Budget Pill */}
           <div className="flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 border border-emerald-200 bg-emerald-50 text-[#0d3a24] shadow-sm">
             <span className="font-black text-sm tabular-nums">{team?.budget ?? 0}</span>
@@ -642,14 +689,14 @@ export default function CaptainDashboard() {
               </div>
 
               {/* Bid history box */}
-              <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1 max-h-[260px] sm:max-h-[300px]">
+              <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1 max-h-65 sm:max-h-75">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#e8e2d5] bg-[#faf8f5] shrink-0">
                   <p className="text-[#111827] text-xs font-bold uppercase tracking-wider">Bid History</p>
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24]">
                     {bidHistory.length}
                   </span>
                 </div>
-                <div ref={bidListRef} className="overflow-y-auto divide-y divide-gray-100 flex-1 min-h-0 p-2 max-h-[200px] sm:max-h-[240px]">
+                <div ref={bidListRef} className="overflow-y-auto divide-y divide-gray-100 flex-1 min-h-0 p-2 max-h-50 sm:max-h-60">
                   {bidHistory.length === 0 && <p className="text-[#9ca3af] text-xs text-center py-6">No bids placed yet</p>}
                   {bidHistory.map((b, i) => (
                     <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${i === 0 ? 'bg-amber-50 text-[#111827] font-semibold' : 'text-[#4b5563]'}`}>
@@ -791,12 +838,17 @@ export default function CaptainDashboard() {
 
           </div>
         ) : (
-          <div className="h-full bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-12 text-center shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-[#f4efe6] border border-[#e8e2d5] flex items-center justify-center mb-4">
+          <div className="h-full bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center shadow-sm">
+            <div className="w-16 h-16 rounded-full bg-[#f4efe6] border border-[#e8e2d5] flex items-center justify-center mb-4 shadow-inner">
               <Logo size="sm" className="opacity-70" />
             </div>
             <h2 className="text-2xl font-bold font-serif text-[#111827] mb-2">Standing By For Next Player</h2>
-            <p className="text-[#6b7280] text-sm">The auctioneer will place the next player on the bidding block soon.</p>
+            <p className="text-[#6b7280] text-sm max-w-sm">The auctioneer will place the next player on the bidding block soon.</p>
+
+            <div className="mt-6 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <span>Anti-cheat active: Tab switching and Inspect element are locked until the auction ends.</span>
+            </div>
           </div>
         )}
       </div>
