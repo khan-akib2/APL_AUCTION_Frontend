@@ -13,6 +13,8 @@ import AuctionTimer from '@/components/AuctionTimer';
 import BigCountdownOverlay from '@/components/BigCountdownOverlay';
 import MysteryPlayerCard from '@/components/MysteryPlayerCard';
 import MysteryRevealOverlay from '@/components/MysteryRevealOverlay';
+import SoldCelebrationModal from '@/components/SoldCelebrationModal';
+import LastSoldCard from '@/components/LastSoldCard';
 import { playBidSound, playSoldSound, playUnsoldSound, playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 
@@ -54,6 +56,8 @@ export default function CaptainDashboard() {
   const [revealOverlayPlayer, setRevealOverlayPlayer] = useState(null);
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
+  const [soldAnnouncement, setSoldAnnouncement] = useState(null);
+  const [lastSold, setLastSold] = useState(null);
   const [isLocked, setIsLocked] = useState(() => {
     if (typeof window !== 'undefined') {
       return Boolean(sessionStorage.getItem('apl_captain_locked'));
@@ -102,6 +106,9 @@ export default function CaptainDashboard() {
           sessionStorage.removeItem('apl_captain_locked');
         }
       }
+    }
+    if (sessionRes?.lastSold) {
+      setLastSold(sessionRes.lastSold);
     }
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
@@ -361,6 +368,7 @@ export default function CaptainDashboard() {
       if (data?.sport && data.sport !== captainSport) return;
       const s = data.session;
       const p = data.player || s?.playerId;
+      setSoldAnnouncement(null);
       setActiveSession(s);
       setActivePlayer(p);
       setBidHistory([]);
@@ -442,6 +450,17 @@ export default function CaptainDashboard() {
       const amount = data.amount ?? data.session?.currentBid ?? data.player?.soldPrice ?? 0;
       const winningTeamId = data.teamId || data.team?._id;
       const p = data.player || data.session?.playerId;
+
+      const soldData = {
+        player: p,
+        team: data.team,
+        teamName,
+        amount,
+        timestamp: new Date().toISOString(),
+      };
+      setSoldAnnouncement(soldData);
+      setLastSold(soldData);
+
       toast(`SOLD to ${teamName} for ${amount} pts!`, 'success');
       if (winningTeamId === team?._id && p?.isMysteryPlayer) {
         setRevealOverlayPlayer(p);
@@ -689,7 +708,15 @@ export default function CaptainDashboard() {
 
   const isTimeEnded = timer.remaining !== null && timer.remaining <= 0;
   const isTimerPaused = Boolean(timer.paused);
-  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && !isLocked && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed' && !isTimeEnded && !isTimerPaused;
+  const mySquad = (team?.players || []).filter(p => {
+    if (!p) return false;
+    if (p.soldTo) {
+      const soldToId = typeof p.soldTo === 'object' ? p.soldTo._id : p.soldTo;
+      return String(soldToId) === String(team?._id);
+    }
+    return true;
+  });
+  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && !isLocked && mySquad.length < (team.teamSize || 7) && activeSession.status !== 'closed' && !isTimeEnded && !isTimerPaused;
   const budgetPct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
 
   return (
@@ -952,10 +979,10 @@ export default function CaptainDashboard() {
               {/* Squad Card */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 flex-1 flex flex-col shadow-sm min-h-0">
                 <p className="text-[#111827] text-xs uppercase tracking-wider font-bold mb-3 shrink-0">
-                  My Squad · {team?.playerCount || 0}/{team?.teamSize || 7}
+                  My Squad · {mySquad.length}/{team?.teamSize || 7}
                 </p>
                 <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
-                  {team?.players?.map(p => (
+                  {mySquad.map(p => (
                     <div key={p._id} className="flex items-center justify-between py-2 px-3 rounded-2xl bg-[#faf8f5] border border-[#e8e2d5] shadow-sm">
                       <div className="flex-1 min-w-0">
                         <p className="text-[#111827] text-xs font-semibold truncate">{p.name}</p>
@@ -964,9 +991,9 @@ export default function CaptainDashboard() {
                       <span className="text-[#c59b27] text-xs font-bold ml-2 shrink-0">{p.soldPrice} pts</span>
                     </div>
                   ))}
-                  {Array.from({ length: Math.max(0, 7 - (team?.players?.length || 0)) }).map((_, i) => (
+                  {Array.from({ length: Math.max(0, (team?.teamSize || 7) - mySquad.length) }).map((_, i) => (
                     <div key={i} className="py-2.5 px-3 rounded-2xl border border-dashed border-[#e8e2d5] bg-white">
-                      <p className="text-[#9ca3af] text-xs text-center font-medium">Empty Slot {(team?.players?.length || 0) + i + 1}</p>
+                      <p className="text-[#9ca3af] text-xs text-center font-medium">Empty Slot {mySquad.length + i + 1}</p>
                     </div>
                   ))}
                 </div>
@@ -982,13 +1009,27 @@ export default function CaptainDashboard() {
             <h2 className="text-2xl font-bold font-serif text-[#111827] mb-2">Standing By For Next Player</h2>
             <p className="text-[#6b7280] text-sm max-w-sm">The auctioneer will place the next player on the bidding block soon.</p>
 
-            <div className="mt-6 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium shadow-2xs">
+            {lastSold && (
+              <div className="w-full max-w-md my-4 text-left">
+                <LastSoldCard lastSold={lastSold} />
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
               <span>Anti-cheat active: Tab switching and Inspect element are locked until the auction ends.</span>
             </div>
           </div>
         )}
       </div>
+
+      {/* Sold celebration overlay */}
+      {soldAnnouncement && (
+        <SoldCelebrationModal
+          soldData={soldAnnouncement}
+          onClose={() => setSoldAnnouncement(null)}
+        />
+      )}
 
       {/* Mystery reveal overlay */}
       {revealOverlayPlayer && (

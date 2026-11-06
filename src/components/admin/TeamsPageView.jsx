@@ -423,7 +423,15 @@ export default function TeamsPageView({ sport = 'cricket' }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {teams.map(team => {
                   const maxPlayers = team.teamSize || 7;
-                  const count = team.playerCount ?? team.players?.length ?? 0;
+                  const teamSquad = (team.players || []).filter(p => {
+                    if (!p) return false;
+                    if (p.soldTo) {
+                      const soldToId = typeof p.soldTo === 'object' ? p.soldTo._id : p.soldTo;
+                      return String(soldToId) === String(team._id);
+                    }
+                    return true;
+                  });
+                  const count = teamSquad.length;
                   const totalPurse = team.initialBudget || 1000;
                   const pct = Math.round(((team.pointsSpent || 0) / totalPurse) * 100);
 
@@ -556,8 +564,18 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       </div>
 
       {/* Team Detail / Full Squad Modal */}
-      {detailTeam && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {detailTeam && (() => {
+        const detailSquad = (detailTeam.players || []).filter(p => {
+          if (!p) return false;
+          if (p.soldTo) {
+            const soldToId = typeof p.soldTo === 'object' ? p.soldTo._id : p.soldTo;
+            return String(soldToId) === String(detailTeam._id);
+          }
+          return true;
+        });
+
+        return (
+          <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[90vh] shadow-2xl border border-gray-100 flex flex-col overflow-hidden animate-fade-in">
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#e8e2d5] shrink-0">
@@ -616,7 +634,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
               <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center">
                 <span className="text-[#6b7280] text-[10px] uppercase font-bold tracking-wider block">Squad Capacity</span>
                 <span className="text-xl sm:text-2xl font-black text-[#111827] tabular-nums block">
-                  {detailTeam.players?.length || detailTeam.playerCount || 0} / {detailTeam.teamSize || 7}
+                  {detailSquad.length} / {detailTeam.teamSize || 7}
                 </span>
                 <span className="text-[#9ca3af] text-[10px]">players signed</span>
               </div>
@@ -626,11 +644,11 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             <div className="flex-1 overflow-y-auto pr-1 min-h-[160px]">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs uppercase font-bold tracking-wider text-[#6b7280]">
-                  Signed Squad Members ({detailTeam.players?.length || 0} / {detailTeam.teamSize || 7})
+                  Signed Squad Members ({detailSquad.length} / {detailTeam.teamSize || 7})
                 </h3>
               </div>
 
-              {!detailTeam.players || detailTeam.players.length === 0 ? (
+              {detailSquad.length === 0 ? (
                 <div className="text-center py-10 bg-[#faf8f5] rounded-2xl border border-dashed border-[#e8e2d5] p-6">
                   <div className="w-10 h-10 rounded-full bg-white border border-[#e8e2d5] flex items-center justify-center mx-auto mb-2 text-[#9ca3af]">
                     —
@@ -640,7 +658,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {detailTeam.players.map(p => (
+                  {detailSquad.map(p => (
                     <div
                       key={p._id}
                       className="flex items-center justify-between bg-white border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl px-3.5 py-2.5 shadow-xs transition-all"
@@ -730,7 +748,8 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Add / Edit Team Modal */}
       {showForm && (

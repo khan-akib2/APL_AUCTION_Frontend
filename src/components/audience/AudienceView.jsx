@@ -8,6 +8,8 @@ import Logo from '@/components/Logo';
 import MysteryPlayerCard from '@/components/MysteryPlayerCard';
 import AuctionTimer from '@/components/AuctionTimer';
 import BigCountdownOverlay from '@/components/BigCountdownOverlay';
+import SoldCelebrationModal from '@/components/SoldCelebrationModal';
+import LastSoldCard from '@/components/LastSoldCard';
 import { playBidSound, playSoldSound, playUnsoldSound, playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
@@ -96,6 +98,14 @@ function PositionPill({ skill, isFootball }) {
 function TeamCard({ team, idx }) {
   const [expanded, setExpanded] = useState(false);
   const pct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
+  const squad = (team.players || []).filter(p => {
+    if (!p) return false;
+    if (p.soldTo) {
+      const soldToId = typeof p.soldTo === 'object' ? p.soldTo._id : p.soldTo;
+      return String(soldToId) === String(team._id);
+    }
+    return true;
+  });
 
   return (
     <div className="border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md bg-white">
@@ -114,7 +124,7 @@ function TeamCard({ team, idx }) {
             )}
             <div className="min-w-0">
               <p className="text-[#111827] font-bold text-sm truncate">{team.name}</p>
-              <p className="text-[#6b7280] text-xs">{team.playerCount || team.players?.length || 0}/{team.teamSize || 7} players</p>
+              <p className="text-[#6b7280] text-xs">{squad.length}/{team.teamSize || 7} players</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-0.5 shrink-0">
@@ -139,9 +149,9 @@ function TeamCard({ team, idx }) {
         style={{ maxHeight: expanded ? '320px' : '0px' }}
       >
         <div className="border-t border-[#e8e2d5] bg-[#faf8f5] p-3 space-y-1.5 max-h-52 overflow-y-auto">
-          {!team.players?.length ? (
+          {!squad.length ? (
             <p className="text-[#9ca3af] text-xs text-center py-3">No players yet</p>
-          ) : team.players.map(p => (
+          ) : squad.map(p => (
             <div key={p._id} className="flex items-center justify-between rounded-xl px-3 py-2 bg-white border border-[#e8e2d5] gap-2 shadow-sm">
               <div className="min-w-0">
                 <p className="text-[#111827] text-xs font-semibold truncate">{p.name}</p>
@@ -176,6 +186,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
   const [mysteryReveal, setMysteryReveal] = useState(null);
   const [timer, setTimer] = useState({ remaining: null, paused: false });
   const [finalizingState, setFinalizingState] = useState(null);
+  const [soldAnnouncement, setSoldAnnouncement] = useState(null);
+  const [lastSold, setLastSold] = useState(null);
   const socketRef = useRef(null);
 
   const fetchTeams = useCallback(() => {
@@ -190,6 +202,9 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
         if (!d || d.error) return; // Do not clear active auction state on network or auth errors!
+        if (d.lastSold) {
+          setLastSold(d.lastSold);
+        }
         if (d.session) {
           setActiveSession(d.session);
           setActivePlayer(d.session.playerId);
@@ -247,6 +262,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       if (data?.sport && data.sport !== sport) return;
       const session = data.session;
       const player = data.player || session?.playerId;
+      setSoldAnnouncement(null);
       setActiveSession(session);
       setActivePlayer(player);
       setBidHistory([]);
@@ -312,6 +328,18 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       const player = data.player || data.session?.playerId;
       const team = data.team;
       const teamName = data.teamName || team?.name || '';
+      const amount = data.amount ?? data.session?.currentBid ?? data.player?.soldPrice ?? 0;
+
+      const soldData = {
+        player,
+        team,
+        teamName,
+        amount,
+        timestamp: new Date().toISOString(),
+      };
+      setSoldAnnouncement(soldData);
+      setLastSold(soldData);
+
       setFinalizingState(null);
       setActiveSession(null);
       setActivePlayer(null);
@@ -669,6 +697,12 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 <p className="text-[#6b7280] text-sm max-w-md">
                   The auctioneer will bring the next {sportLabel.toLowerCase()} star to the live stage shortly.
                 </p>
+
+                {lastSold && (
+                  <div className="w-full max-w-md mt-6">
+                    <LastSoldCard lastSold={lastSold} />
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -712,6 +746,14 @@ export default function AudienceView({ initialSport = 'cricket' }) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Sold Celebration Modal */}
+      {soldAnnouncement && (
+        <SoldCelebrationModal
+          soldData={soldAnnouncement}
+          onClose={() => setSoldAnnouncement(null)}
+        />
       )}
     </div>
   );
