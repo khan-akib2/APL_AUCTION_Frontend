@@ -12,6 +12,23 @@ import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
+function dedupeBids(bids) {
+  if (!Array.isArray(bids)) return [];
+  const result = [];
+  for (const b of bids) {
+    const last = result[result.length - 1];
+    if (
+      last &&
+      Number(last.amount) === Number(b.amount) &&
+      String(last.teamName || '').trim().toLowerCase() === String(b.teamName || '').trim().toLowerCase()
+    ) {
+      continue;
+    }
+    result.push(b);
+  }
+  return result;
+}
+
 // Football pitch line markings watermark (subtle on light background)
 function FootballPitchLines() {
   return (
@@ -174,7 +191,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
         if (d.session) {
           setActiveSession(d.session);
           setActivePlayer(d.session.playerId);
-          setBidHistory(d.session.bids?.slice().reverse() || []);
+          setBidHistory(dedupeBids(d.session.bids).slice().reverse());
           setTimer({ remaining: d.session.timerRemaining, paused: d.session.timerPaused });
           if (d.session.status === 'finalizing') {
             setFinalizingState(d.session);
@@ -240,7 +257,10 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       if (data?.sport && data.sport !== sport) return;
       const bidAmt = data.currentBid ?? data.amount;
       const bidderName = data.bidderTeamName ?? data.teamName ?? '';
-      if (!bidAmt || !bidderName) return;
+      if (bidAmt === undefined || bidAmt === null || !bidderName) return;
+
+      const numAmt = Number(bidAmt);
+      const normTeam = String(bidderName).trim().toLowerCase();
 
       setActiveSession(prev => {
         if (!prev) {
@@ -249,17 +269,21 @@ export default function AudienceView({ initialSport = 'cricket' }) {
         }
         return {
           ...prev,
-          currentBid: bidAmt,
+          currentBid: numAmt,
           currentHighestBidderName: bidderName,
         };
       });
 
       setBidHistory(prev => {
-        if (prev.length > 0 && prev[0].amount === bidAmt && prev[0].teamName === bidderName) {
+        if (
+          prev.length > 0 &&
+          Number(prev[0].amount) === numAmt &&
+          String(prev[0].teamName || '').trim().toLowerCase() === normTeam
+        ) {
           return prev;
         }
         playBidSound();
-        return [{ teamName: bidderName, amount: bidAmt }, ...prev];
+        return [{ teamName: bidderName, amount: numAmt }, ...prev];
       });
     };
 
@@ -307,22 +331,11 @@ export default function AudienceView({ initialSport = 'cricket' }) {
     };
 
     s.on('auction:start', handleStart);
-    s.on('playerNominated', handleStart);
-
     s.on('auction:bid_update', handleBidUpdate);
-    s.on('bidPlaced', handleBidUpdate);
-
     s.on('auction:timer', handleTimer);
-    s.on('timerTick', handleTimer);
-
     s.on('auction:finalizing', handleFinalizing);
-    s.on('auctionFinalizing', handleFinalizing);
-
     s.on('auction:sold', handleSold);
-    s.on('playerSold', handleSold);
-
     s.on('auction:unsold', handleUnsold);
-    s.on('playerUnsold', handleUnsold);
 
     s.on('auction:resale', (data) => {
       if (data?.sport && data.sport !== sport) return;
@@ -335,17 +348,11 @@ export default function AudienceView({ initialSport = 'cricket' }) {
 
     return () => {
       s.off('auction:start');
-      s.off('playerNominated');
       s.off('auction:bid_update');
-      s.off('bidPlaced');
       s.off('auction:timer');
-      s.off('timerTick');
       s.off('auction:finalizing');
-      s.off('auctionFinalizing');
       s.off('auction:sold');
-      s.off('playerSold');
       s.off('auction:unsold');
-      s.off('playerUnsold');
       s.off('auction:resale');
       s.off('teams:reset');
       s.disconnect();

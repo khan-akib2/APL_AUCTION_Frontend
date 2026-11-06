@@ -15,6 +15,23 @@ import MysteryRevealOverlay from '@/components/MysteryRevealOverlay';
 import { playBidSound, playSoldSound, playUnsoldSound, playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 
+function dedupeBids(bids) {
+  if (!Array.isArray(bids)) return [];
+  const result = [];
+  for (const b of bids) {
+    const last = result[result.length - 1];
+    if (
+      last &&
+      Number(last.amount) === Number(b.amount) &&
+      String(last.teamName || '').trim().toLowerCase() === String(b.teamName || '').trim().toLowerCase()
+    ) {
+      continue;
+    }
+    result.push(b);
+  }
+  return result;
+}
+
 export default function CaptainDashboard() {
   const { user, logout } = useAuth();
   const { request } = useApi();
@@ -51,7 +68,7 @@ export default function CaptainDashboard() {
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
       setActivePlayer(sessionRes.session.playerId);
-      setBidHistory(sessionRes.session.bids?.slice().reverse() || []);
+      setBidHistory(dedupeBids(sessionRes.session.bids).slice().reverse());
       setTimer({ remaining: sessionRes.session.timerRemaining, paused: sessionRes.session.timerPaused });
       if (sessionRes.session.status === 'finalizing') {
         const elapsed = Math.floor((Date.now() - new Date(sessionRes.session.finalizingAt || Date.now()).getTime()) / 1000);
@@ -112,24 +129,31 @@ export default function CaptainDashboard() {
       const amount = data.amount ?? data.currentBid;
       const teamId = data.teamId ?? data.bidderTeamId;
       const teamName = data.teamName ?? data.bidderTeamName;
-      if (!amount || !teamName) return;
+      if (amount === undefined || amount === null || !teamName) return;
+
+      const numAmt = Number(amount);
+      const normTeam = String(teamName).trim().toLowerCase();
 
       setActiveSession(prev => prev ? {
         ...prev,
-        currentBid: amount,
+        currentBid: numAmt,
         currentHighestBidder: teamId,
         currentHighestBidderName: teamName,
       } : prev);
 
       setBidHistory(prev => {
-        // Prevent duplicate consecutive bids (e.g. from multiple socket events/aliases)
-        if (prev.length > 0 && prev[0].amount === amount && prev[0].teamName === teamName) {
+        // Prevent duplicate bids
+        if (
+          prev.length > 0 &&
+          Number(prev[0].amount) === numAmt &&
+          String(prev[0].teamName || '').trim().toLowerCase() === normTeam
+        ) {
           return prev;
         }
         playBidSound();
         return [{
           teamName,
-          amount,
+          amount: numAmt,
           createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
         }, ...prev];
       });
@@ -191,23 +215,11 @@ export default function CaptainDashboard() {
     };
 
     socket.on('auction:start', handlePlayerNominated);
-    socket.on('playerNominated', handlePlayerNominated);
-
     socket.on('auction:bid_update', handleBidPlaced);
-    socket.on('bidPlaced', handleBidPlaced);
-
     socket.on('auction:timer', handleTimerTick);
-    socket.on('timerTick', handleTimerTick);
-
     socket.on('auction:finalizing', handleFinalizing);
-    socket.on('auctionFinalizing', handleFinalizing);
-
     socket.on('auction:sold', handleSold);
-    socket.on('playerSold', handleSold);
-
     socket.on('auction:unsold', handleUnsold);
-    socket.on('playerUnsold', handleUnsold);
-
     socket.on('auctionFinalized', handleFinalized);
     socket.on('auction:resale', () => loadData());
     socket.on('teams:reset', () => loadData());
@@ -218,17 +230,11 @@ export default function CaptainDashboard() {
     return () => {
       socket.emit('leaveRoom', { room: roomName, sport: captainSport });
       socket.off('auction:start', handlePlayerNominated);
-      socket.off('playerNominated', handlePlayerNominated);
       socket.off('auction:bid_update', handleBidPlaced);
-      socket.off('bidPlaced', handleBidPlaced);
       socket.off('auction:timer', handleTimerTick);
-      socket.off('timerTick', handleTimerTick);
       socket.off('auction:finalizing', handleFinalizing);
-      socket.off('auctionFinalizing', handleFinalizing);
       socket.off('auction:sold', handleSold);
-      socket.off('playerSold', handleSold);
       socket.off('auction:unsold', handleUnsold);
-      socket.off('playerUnsold', handleUnsold);
       socket.off('auctionFinalized', handleFinalized);
       socket.off('auction:resale');
       socket.off('teams:reset');
