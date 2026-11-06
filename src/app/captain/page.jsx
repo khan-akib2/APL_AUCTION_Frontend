@@ -10,6 +10,7 @@ import SkillBadge from '@/components/SkillBadge';
 import Spinner from '@/components/Spinner';
 import Logo from '@/components/Logo';
 import AuctionTimer from '@/components/AuctionTimer';
+import BigCountdownOverlay from '@/components/BigCountdownOverlay';
 import MysteryPlayerCard from '@/components/MysteryPlayerCard';
 import MysteryRevealOverlay from '@/components/MysteryRevealOverlay';
 import { playBidSound, playSoldSound, playUnsoldSound, playTimerUrgentSound } from '@/lib/sounds';
@@ -458,7 +459,7 @@ export default function CaptainDashboard() {
             {/* CENTER: Player Card */}
             <div className="lg:col-span-6 flex flex-col overflow-hidden h-full min-h-0">
               {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
-                <div className="h-full min-h-0 flex-1">
+                <div className="h-full min-h-0 flex-1 relative">
                   <MysteryPlayerCard
                     player={activePlayer}
                     revealTokens={team?.revealTokens ?? 0}
@@ -466,6 +467,7 @@ export default function CaptainDashboard() {
                     revealing={revealing}
                     revealed={revealedPlayerIds.has(activePlayer._id)}
                   />
+                  <BigCountdownOverlay remaining={timer.remaining} />
                 </div>
               ) : (
                 <div className="relative rounded-3xl overflow-hidden shadow-md h-full border border-[#e8e2d5] bg-white flex flex-col justify-end min-h-0">
@@ -514,6 +516,9 @@ export default function CaptainDashboard() {
                       <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="lg" />
                     </div>
                   )}
+
+                  {/* Big Glowing Countdown Overlay (3, 2, 1) */}
+                  <BigCountdownOverlay remaining={timer.remaining} />
 
                   {/* Player info — bottom overlay */}
                   <div className="relative z-10 px-6 pb-6 pt-10 text-white">

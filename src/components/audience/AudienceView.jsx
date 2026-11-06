@@ -7,6 +7,7 @@ import SkillBadge from '@/components/SkillBadge';
 import Logo from '@/components/Logo';
 import MysteryPlayerCard from '@/components/MysteryPlayerCard';
 import AuctionTimer from '@/components/AuctionTimer';
+import BigCountdownOverlay from '@/components/BigCountdownOverlay';
 import { playBidSound, playSoldSound, playUnsoldSound, playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
@@ -524,8 +525,9 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 {/* CENTER: Player Card */}
                 <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden h-full">
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
-                    <div className="flex-1 h-full min-h-0 overflow-hidden">
+                    <div className="flex-1 h-full min-h-0 overflow-hidden relative">
                       <MysteryPlayerCard player={activePlayer} revealTokens={null} />
+                      <BigCountdownOverlay remaining={timer.remaining} />
                     </div>
                   ) : (
                     <div className="relative rounded-3xl overflow-hidden shadow-md w-full flex flex-col justify-end border border-[#e8e2d5] bg-white h-full">
@@ -578,6 +580,9 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                           <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="lg" />
                         </div>
                       )}
+
+                      {/* Big Glowing Countdown Overlay (3, 2, 1) */}
+                      <BigCountdownOverlay remaining={timer.remaining} />
 
                       {/* Player Info Footer */}
                       <div className="relative z-10 px-6 pb-6 pt-10 text-white">

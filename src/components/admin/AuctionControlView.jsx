@@ -8,6 +8,7 @@ import Spinner from '@/components/Spinner';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 import SkillBadge from '@/components/SkillBadge';
 import AuctionTimer from '@/components/AuctionTimer';
+import BigCountdownOverlay from '@/components/BigCountdownOverlay';
 import { playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 
@@ -456,6 +457,9 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                         <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="lg" />
                       </div>
                     )}
+
+                    {/* Big Glowing Countdown Overlay (3, 2, 1) */}
+                    <BigCountdownOverlay remaining={timer.remaining} />
 
                     {/* Player info — bottom overlay */}
                     <div className="relative z-10 px-6 pb-5 pt-10 text-white">
