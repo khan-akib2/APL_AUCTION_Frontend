@@ -14,6 +14,24 @@ export default function AuctionTimer({ remaining, paused = false, size = 'md', c
 
   // Banner variant: Full-width alert bar
   if (size === 'banner') {
+    if (paused) {
+      return (
+        <div
+          className={`w-full px-4 py-2.5 rounded-2xl border flex items-center justify-between transition-all duration-300 shadow-md bg-amber-500 border-amber-400 text-white ${className}`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse shrink-0" />
+            <p className="text-xs font-bold uppercase tracking-wider">
+              Bidding Timer Paused
+            </p>
+          </div>
+          <div className="flex items-baseline gap-1 font-mono">
+            <span className="text-2xl font-black tabular-nums">{remaining}</span>
+            <span className="text-xs font-bold uppercase opacity-85">sec</span>
+          </div>
+        </div>
+      );
+    }
     if (isCritical) {
       return (
         <div
@@ -61,6 +79,17 @@ export default function AuctionTimer({ remaining, paused = false, size = 'md', c
 
   // Small compact pill
   if (size === 'sm') {
+    if (paused) {
+      return (
+        <div
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl font-mono border text-xs font-bold transition-all duration-300 shadow-sm bg-amber-100 text-amber-900 border-amber-300 ${className}`}
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+          <span className="text-[10px] uppercase font-bold tracking-wider">Paused</span>
+          <span className="tabular-nums font-black text-sm">{remaining}s</span>
+        </div>
+      );
+    }
     return (
       <div
         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl font-mono border text-xs font-bold transition-all duration-300 shadow-sm ${
@@ -90,6 +119,24 @@ export default function AuctionTimer({ remaining, paused = false, size = 'md', c
 
   // Large overlay badge (e.g. over player card photo)
   if (size === 'lg') {
+    if (paused) {
+      return (
+        <div
+          className={`backdrop-blur-md border rounded-2xl px-4 py-2 text-center shadow-lg transition-all duration-300 bg-amber-600/95 border-amber-300 text-white ${className}`}
+        >
+          <div className="flex items-center justify-center gap-1.5 mb-0.5">
+            <span className="w-2 h-2 rounded-full bg-white shrink-0" />
+            <p className="text-[9px] uppercase tracking-widest font-bold opacity-90">TIMER PAUSED</p>
+          </div>
+          <div className="flex items-baseline justify-center gap-1 font-mono">
+            <span className="font-black tabular-nums leading-none tracking-tight text-3xl text-white">
+              {remaining}
+            </span>
+            <span className="text-xs font-bold opacity-80">s</span>
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         className={`backdrop-blur-md border rounded-2xl px-4 py-2 text-center shadow-lg transition-all duration-300 ${
@@ -125,6 +172,19 @@ export default function AuctionTimer({ remaining, paused = false, size = 'md', c
   }
 
   // Default 'md'
+  if (paused) {
+    return (
+      <div
+        className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl font-mono border bg-amber-50 text-amber-900 border-amber-300 shadow-sm ${className}`}
+      >
+        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+        <div className="leading-tight text-left">
+          <p className="text-[9px] uppercase tracking-wider font-bold">PAUSED</p>
+          <p className="text-lg font-black tabular-nums leading-none">{remaining}s</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl font-mono border transition-all duration-300 shadow-sm ${

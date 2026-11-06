@@ -48,6 +48,8 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
   const [timer, setTimer] = useState({ remaining: null, paused: false });
+  const [timerSecondsInput, setTimerSecondsInput] = useState('6');
+  const [liveTimerInput, setLiveTimerInput] = useState('');
 
   const loadData = useCallback(async () => {
     const [pRes, sRes] = await Promise.all([
@@ -74,7 +76,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
         setFinalizingState(null);
         setFinalizingCountdown(0);
       }
-    } else {
+    } else if (sRes && !sRes.error) {
       setActiveSession(null);
       setActivePlayer(null);
       setBidHistory([]);
@@ -229,18 +231,72 @@ export default function AuctionControlView({ sport = 'cricket' }) {
     if (!targetId) return toast('Select a player to auction', 'warning');
     if (activeSession) return toast('An auction is currently active', 'warning');
 
+    const duration = Math.max(3, parseInt(timerSecondsInput, 10) || 6);
+
     setActionLoading(true);
     const res = await request('/api/auction/start', {
       method: 'POST',
-      body: JSON.stringify({ playerId: targetId, sport }),
+      body: JSON.stringify({ playerId: targetId, sport, timerDuration: duration }),
     });
     setActionLoading(false);
     if (res?.error) {
       toast(res.error, 'error');
       return;
     }
-    toast('Live bidding started!', 'success');
+    if (res?.session) {
+      setActiveSession(res.session);
+      const p = res.player || res.session.playerId;
+      setActivePlayer(p);
+      setSelectedPlayer(p);
+      setBidHistory([]);
+      setTimer({ remaining: res.session.timerRemaining ?? duration, paused: false });
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+    }
+    toast(`Live bidding started (${duration}s timer)!`, 'success');
     loadData();
+  };
+
+  const togglePauseTimer = async () => {
+    if (!activeSession) return;
+    const isCurrentlyPaused = Boolean(timer.paused);
+    const endpoint = isCurrentlyPaused ? '/api/auction/timer/resume' : '/api/auction/timer/pause';
+    setActionLoading(true);
+    const res = await request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ sport }),
+    });
+    setActionLoading(false);
+    if (res?.error) {
+      toast(res.error, 'error');
+    } else {
+      toast(isCurrentlyPaused ? 'Timer resumed' : 'Timer paused', 'info');
+      setTimer(prev => ({ ...prev, paused: !isCurrentlyPaused }));
+    }
+  };
+
+  const handleSetLiveTimer = async (secondsOverride) => {
+    if (!activeSession) return;
+    const sec = Number(secondsOverride !== undefined ? secondsOverride : liveTimerInput);
+    if (!sec || sec < 1) return toast('Enter valid seconds', 'warning');
+    setActionLoading(true);
+    const res = await request('/api/auction/timer/set', {
+      method: 'POST',
+      body: JSON.stringify({ sport, seconds: sec }),
+    });
+    setActionLoading(false);
+    if (res?.error) {
+      toast(res.error, 'error');
+    } else {
+      toast(`Timer set to ${sec}s`, 'success');
+      setLiveTimerInput('');
+    }
+  };
+
+  const handleAddLiveSeconds = async (addSec) => {
+    if (!activeSession) return;
+    const current = Number(timer.remaining) || 0;
+    handleSetLiveTimer(current + addSec);
   };
 
   const markSold = async () => {
@@ -374,8 +430,66 @@ export default function AuctionControlView({ sport = 'cricket' }) {
               })}
             </div>
 
-            {/* Fixed Bottom Button: Start Bidding */}
+            {/* Fixed Bottom Controls: Timer Duration & Start Bidding */}
             <div className="p-3.5 border-t border-[#e8e2d5] shrink-0 bg-[#faf8f5]">
+              <div className="mb-2.5 bg-white p-2.5 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
+                    <svg className="w-3.5 h-3.5 text-[#0d3a24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 7v5l3 2" />
+                    </svg>
+                    Bidding Timer:
+                  </span>
+                  <span className="font-black text-xs text-[#0d3a24] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                    {Math.max(3, parseInt(timerSecondsInput, 10) || 6)}s
+                  </span>
+                </div>
+
+                {/* Preset Pills */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[6, 10, 15, 30].map(sec => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setTimerSecondsInput(String(sec))}
+                      className={`py-1 rounded-lg text-xs font-bold transition-all border ${
+                        parseInt(timerSecondsInput, 10) === sec
+                          ? 'bg-[#0d3a24] text-white border-[#0d3a24] shadow-xs'
+                          : 'bg-stone-50 text-stone-600 border-stone-200 hover:border-stone-300'
+                      }`}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+
+                {/* Direct Editable Seconds Input */}
+                <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-stone-100">
+                  <label htmlFor="custom-sec-input" className="text-[11px] text-stone-600 font-semibold shrink-0">
+                    Editable seconds:
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      id="custom-sec-input"
+                      type="number"
+                      min="3"
+                      max="300"
+                      value={timerSecondsInput}
+                      onChange={(e) => setTimerSecondsInput(e.target.value)}
+                      onBlur={() => {
+                        const val = parseInt(timerSecondsInput, 10);
+                        if (isNaN(val) || val < 3) setTimerSecondsInput('6');
+                        else if (val > 300) setTimerSecondsInput('300');
+                      }}
+                      className="w-16 px-2 py-1 text-xs font-black text-center bg-stone-50 border border-stone-300 rounded-lg focus:outline-none focus:border-[#0d3a24] focus:bg-white transition-colors"
+                      placeholder="e.g. 10"
+                    />
+                    <span className="text-xs text-stone-500 font-bold">sec</span>
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={() => startBidding()}
                 disabled={!selectedPlayer || Boolean(activeSession) || actionLoading}
@@ -385,7 +499,11 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                     : 'bg-stone-100 text-[#9ca3af] cursor-not-allowed border border-stone-200'
                 }`}
               >
-                {actionLoading ? <Spinner size="sm" /> : 'Start Bidding'}
+                {actionLoading ? (
+                  <Spinner size="sm" />
+                ) : (
+                  `Start Bidding (${Math.max(3, parseInt(timerSecondsInput, 10) || 6)}s)`
+                )}
               </button>
             </div>
           </div>
@@ -459,7 +577,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                     )}
 
                     {/* Big Glowing Countdown Overlay (3, 2, 1) */}
-                    <BigCountdownOverlay remaining={timer.remaining} />
+                    <BigCountdownOverlay remaining={timer.remaining} paused={timer.paused} />
 
                     {/* Player info — bottom overlay */}
                     <div className="relative z-10 px-6 pb-5 pt-10 text-white">
@@ -497,6 +615,82 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                       </div>
                     </div>
                   </div>
+
+                  {/* Live Timer Control Bar: Pause / Resume & Live Edit Seconds */}
+                  {timer.remaining !== null && (
+                    <div className="mb-3.5 p-3 rounded-2xl bg-white border border-[#e8e2d5] shadow-xs flex flex-wrap items-center justify-between gap-2.5">
+                      {/* Pause / Resume Button */}
+                      <button
+                        type="button"
+                        onClick={togglePauseTimer}
+                        disabled={actionLoading || Boolean(finalizingState)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+                          timer.paused
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-400/50 animate-pulse'
+                            : 'bg-amber-500 hover:bg-amber-600 text-white'
+                        }`}
+                      >
+                        {timer.paused ? (
+                          <>
+                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <span>Resume Timer ({timer.remaining}s)</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                            <span>Pause Timer</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Live Edit Seconds */}
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <span className="text-[11px] font-bold text-stone-500">Edit Sec:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="300"
+                          value={liveTimerInput}
+                          onChange={(e) => setLiveTimerInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSetLiveTimer();
+                          }}
+                          className="w-16 px-2 py-1 text-xs font-bold text-center bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#0d3a24] focus:bg-white"
+                          placeholder={String(timer.remaining)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSetLiveTimer()}
+                          disabled={actionLoading || !liveTimerInput}
+                          className="px-2.5 py-1 text-xs font-bold rounded-lg bg-[#0d3a24] text-white hover:bg-[#154d32] transition-all disabled:opacity-40"
+                        >
+                          Set
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAddLiveSeconds(5)}
+                          disabled={actionLoading}
+                          className="px-2 py-1 text-xs font-bold rounded-lg bg-stone-100 border border-stone-200 text-stone-700 hover:bg-stone-200"
+                          title="Add 5 seconds"
+                        >
+                          +5s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAddLiveSeconds(10)}
+                          disabled={actionLoading}
+                          className="px-2 py-1 text-xs font-bold rounded-lg bg-stone-100 border border-stone-200 text-stone-700 hover:bg-stone-200"
+                          title="Add 10 seconds"
+                        >
+                          +10s
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Critical 3, 2, 1 Countdown Banner */}
                   {timer.remaining !== null && timer.remaining <= 3 && timer.remaining > 0 && !finalizingState && (

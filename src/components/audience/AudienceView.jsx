@@ -527,7 +527,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                     <div className="flex-1 h-full min-h-0 overflow-hidden relative">
                       <MysteryPlayerCard player={activePlayer} revealTokens={null} />
-                      <BigCountdownOverlay remaining={timer.remaining} />
+                      <BigCountdownOverlay remaining={timer.remaining} paused={timer.paused} />
                     </div>
                   ) : (
                     <div className="relative rounded-3xl overflow-hidden shadow-md w-full flex flex-col justify-end border border-[#e8e2d5] bg-white h-full">
@@ -582,7 +582,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                       )}
 
                       {/* Big Glowing Countdown Overlay (3, 2, 1) */}
-                      <BigCountdownOverlay remaining={timer.remaining} />
+                      <BigCountdownOverlay remaining={timer.remaining} paused={timer.paused} />
 
                       {/* Player Info Footer */}
                       <div className="relative z-10 px-6 pb-6 pt-10 text-white">

@@ -467,7 +467,7 @@ export default function CaptainDashboard() {
                     revealing={revealing}
                     revealed={revealedPlayerIds.has(activePlayer._id)}
                   />
-                  <BigCountdownOverlay remaining={timer.remaining} />
+                  <BigCountdownOverlay remaining={timer.remaining} paused={timer.paused} />
                 </div>
               ) : (
                 <div className="relative rounded-3xl overflow-hidden shadow-md h-full border border-[#e8e2d5] bg-white flex flex-col justify-end min-h-0">
@@ -518,7 +518,7 @@ export default function CaptainDashboard() {
                   )}
 
                   {/* Big Glowing Countdown Overlay (3, 2, 1) */}
-                  <BigCountdownOverlay remaining={timer.remaining} />
+                  <BigCountdownOverlay remaining={timer.remaining} paused={timer.paused} />
 
                   {/* Player info — bottom overlay */}
                   <div className="relative z-10 px-6 pb-6 pt-10 text-white">
