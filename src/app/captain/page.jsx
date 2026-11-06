@@ -92,6 +92,11 @@ export default function CaptainDashboard() {
   const lockoutTriggeredRef = useRef(false);
   const isBiddingRef = useRef(false);
   const hasEnteredFsRef = useRef(false);
+  const mountTimeRef = useRef(0);
+
+  useEffect(() => {
+    mountTimeRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     lockoutTriggeredRef.current = isLocked;
@@ -99,9 +104,50 @@ export default function CaptainDashboard() {
       sessionStorage.removeItem("apl_captain_locked");
       localStorage.removeItem("apl_captain_locked");
     }
-  }, [isLocked]);
+  }, [isLocked, triggerLockout]);
 
   const captainSport = team?.sport || user?.sport || "cricket";
+
+  // Anti-cheat lockout handler
+  const triggerLockout = useCallback(
+    async (reason) => {
+      // Grace period for browser dialogs (password breach warnings, autofill, permission popups) within first 5 seconds
+      if (mountTimeRef.current && Date.now() - mountTimeRef.current < 5000 && reason.includes("Switched away")) {
+        return;
+      }
+      if (lockoutTriggeredRef.current) return;
+      lockoutTriggeredRef.current = true;
+      setIsLocked(true);
+      setLockReason(reason);
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("apl_captain_locked", reason);
+          localStorage.setItem("apl_captain_locked", reason);
+        } catch {
+          /* silent */
+        }
+      }
+      toast(`Anti-Cheat Triggered: ${reason}`, "error");
+
+      const targetTeamId = team?._id || user?.teamId?._id || user?.teamId;
+      if (targetTeamId) {
+        try {
+          await request("/api/auction/lock-captain", {
+            method: "POST",
+            keepalive: true,
+            body: JSON.stringify({
+              teamId: targetTeamId,
+              reason,
+              sport: captainSport,
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to report anti-cheat lockout:", err);
+        }
+      }
+    },
+    [team?._id, user?.teamId, captainSport, request, toast],
+  );
 
   // Fullscreen tracking & auto-lock if exited during auction
   useEffect(() => {
@@ -116,7 +162,11 @@ export default function CaptainDashboard() {
       if (inFs) {
         hasEnteredFsRef.current = true;
       } else if (hasEnteredFsRef.current && !isLocked) {
-        triggerLockout("Exited Fullscreen Auction Mode");
+        if (activeSession && (activeSession.status === "active" || activeSession.status === "finalizing")) {
+          triggerLockout("Exited Fullscreen during active bidding round");
+        } else {
+          setIsFullscreen(false);
+        }
       }
     };
 
@@ -127,7 +177,7 @@ export default function CaptainDashboard() {
       document.removeEventListener("fullscreenchange", checkFs);
       document.removeEventListener("webkitfullscreenchange", checkFs);
     };
-  }, [isLocked]);
+  }, [activeSession, isLocked, triggerLockout]);
 
   const loadData = useCallback(async () => {
     const sportParam =
@@ -153,22 +203,12 @@ export default function CaptainDashboard() {
           );
         }
       } else {
-        const localViolation =
-          typeof window !== "undefined"
-            ? localStorage.getItem("apl_captain_locked") ||
-              sessionStorage.getItem("apl_captain_locked")
-            : null;
-        if (!localViolation) {
-          setIsLocked(false);
-          setLockReason(null);
-        } else if (myTeam.isLocked === false && !myTeam.lockReason) {
-          // If server explicitly shows unlocked and no lockReason, admin has unlocked!
-          setIsLocked(false);
-          setLockReason(null);
-          if (typeof window !== "undefined") {
-            sessionStorage.removeItem("apl_captain_locked");
-            localStorage.removeItem("apl_captain_locked");
-          }
+        setIsLocked(false);
+        setLockReason(null);
+        lockoutTriggeredRef.current = false;
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("apl_captain_locked");
+          localStorage.removeItem("apl_captain_locked");
         }
       }
     }
@@ -238,13 +278,16 @@ export default function CaptainDashboard() {
       }
     };
 
-    // 2. Window blur (switching out of the window or clicking to another app)
+    // 2. Window blur (only lock if tab is actually hidden / switched away)
     const handleWindowBlur = () => {
+      // NOTE: Chrome password breach notifications, autofill popups, or native permission dialogs
+      // steal window focus while the webpage remains completely visible on screen.
+      // Genuine tab switching or minimizing ALWAYS sets document.visibilityState to 'hidden'.
       setTimeout(() => {
-        if (document.hidden || !document.hasFocus()) {
-          triggerLockout("Switched away from auction window");
+        if (document.visibilityState === "hidden") {
+          triggerLockout("Tab switch or browser minimized");
         }
-      }, 150);
+      }, 300);
     };
 
     // 3. Page hide / tab navigation
@@ -389,7 +432,7 @@ export default function CaptainDashboard() {
       document.removeEventListener("contextmenu", handleContextMenu, true);
       window.removeEventListener("dragstart", handleDragStart, true);
     };
-  }, [isLocked]);
+  }, [isLocked, triggerLockout]);
 
   // Socket setup
   useEffect(() => {
