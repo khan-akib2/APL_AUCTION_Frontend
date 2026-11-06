@@ -51,6 +51,13 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   const [timer, setTimer] = useState({ remaining: null, paused: false });
   const [timerSecondsInput, setTimerSecondsInput] = useState('6');
   const [liveTimerInput, setLiveTimerInput] = useState('');
+  const [mobileTab, setMobileTab] = useState('stage');
+
+  useEffect(() => {
+    if (activeSession) {
+      setMobileTab('stage');
+    }
+  }, [activeSession]);
 
   const loadData = useCallback(async () => {
     const [pRes, sRes, tRes] = await Promise.all([
@@ -128,6 +135,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setTimer({ remaining: s?.timerRemaining ?? 6, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
+      setMobileTab('stage');
       loadData();
     };
 
@@ -195,6 +203,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setTimer({ remaining: null, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
+      setMobileTab('stage');
       loadData();
     };
 
@@ -208,6 +217,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setTimer({ remaining: null, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
+      setMobileTab('stage');
       loadData();
     };
 
@@ -281,6 +291,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
     const duration = Math.max(3, parseInt(timerSecondsInput, 10) || 6);
 
+    setMobileTab('stage');
     setActionLoading(true);
     const res = await request('/api/auction/start', {
       method: 'POST',
@@ -407,10 +418,10 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   const lockedTeams = teams.filter(t => t.isLocked);
 
   return (
-    <div className="flex flex-col bg-[#f8f6f0] text-[#111827]" style={{ height: 'calc(100vh - 48px)' }}>
+    <div className="flex flex-col bg-[#f8f6f0] text-[#111827] flex-1 min-h-[calc(100dvh-48px)] lg:h-[calc(100vh-48px)] lg:max-h-[calc(100vh-48px)]">
       {/* Top Title Bar */}
-      <div className="shrink-0 px-4 lg:px-8 py-4 border-b border-[#e8e2d5] bg-white flex items-center justify-between">
-        <h1 className="text-xl font-bold font-serif text-[#111827] flex items-center gap-2.5">
+      <div className="shrink-0 px-4 lg:px-8 py-3.5 sm:py-4 border-b border-[#e8e2d5] bg-white flex items-center justify-between">
+        <h1 className="text-lg sm:text-xl font-bold font-serif text-[#111827] flex items-center gap-2">
           {isFootball ? (
             <FootballIcon className="w-5 h-5 text-[#0d3a24]" />
           ) : (
@@ -419,37 +430,92 @@ export default function AuctionControlView({ sport = 'cricket' }) {
           <span>Auction Control</span>
         </h1>
         {activeSession && (
-          <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
             <span className="w-2 h-2 rounded-full animate-pulse bg-emerald-600" />
-            Live Bidding
+            <span className="hidden xs:inline">Live Bidding</span>
+            <span className="xs:hidden">Live</span>
           </span>
         )}
       </div>
 
+      {/* Mobile Tab Switcher (Phone View Only) */}
+      <div className="lg:hidden shrink-0 px-3 py-2 bg-white border-b border-[#e8e2d5] flex items-center gap-1.5 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setMobileTab('stage')}
+          className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'stage'
+              ? 'bg-[#0d3a24] text-white shadow-xs'
+              : 'bg-[#faf8f5] text-[#4b5563] hover:bg-[#f4efe6] border border-[#e8e2d5]'
+          }`}
+        >
+          <span>🎯 Stage</span>
+          {activeSession && (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileTab('queue')}
+          className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'queue'
+              ? 'bg-[#0d3a24] text-white shadow-xs'
+              : 'bg-[#faf8f5] text-[#4b5563] hover:bg-[#f4efe6] border border-[#e8e2d5]'
+          }`}
+        >
+          <span>📋 Queue</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+            mobileTab === 'queue' ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
+          }`}>
+            {availableQueue.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileTab('feed')}
+          className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'feed'
+              ? 'bg-[#0d3a24] text-white shadow-xs'
+              : 'bg-[#faf8f5] text-[#4b5563] hover:bg-[#f4efe6] border border-[#e8e2d5]'
+          }`}
+        >
+          <span>⚡ Bids</span>
+          {bidHistory.length > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              mobileTab === 'feed' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {bidHistory.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Anti-Cheat Alert Banner for Locked Captains */}
       {lockedTeams.length > 0 && (
-        <div className="shrink-0 bg-red-50 border-b border-red-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-            <span className="flex h-3 w-3 relative shrink-0">
+        <div className="shrink-0 bg-red-50 border-b border-red-200 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="flex h-2.5 w-2.5 relative shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
             </span>
             <span className="text-xs font-black text-red-900 uppercase tracking-wider">
               Anti-Cheat Lockouts ({lockedTeams.length}):
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               {lockedTeams.map(t => (
-                <div key={t._id} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-red-200 shadow-xs text-xs">
+                <div key={t._id} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-red-200 shadow-xs text-xs">
                   <span className="font-bold text-[#111827]">{t.name}</span>
-                  <span className="text-red-600 font-mono text-[11px] bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
+                  <span className="text-red-600 font-mono text-[10px] bg-red-50 px-1 py-0.5 rounded border border-red-100">
                     {t.lockReason || 'Tab switch / Inspect'}
                   </span>
                   <button
                     onClick={() => unlockCaptain(t._id)}
                     disabled={actionLoading}
-                    className="ml-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                    className="ml-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                   >
-                    Unlock / Allow
+                    Unlock
                   </button>
                 </div>
               ))}
@@ -459,11 +525,11 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       )}
 
       {/* Main 3-Column Content Layout */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 lg:p-6 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 p-3 sm:p-4 lg:p-6 overflow-hidden">
 
         {/* COLUMN 1 (LEFT): Queue */}
-        <div className="lg:col-span-3 flex flex-col min-h-0 overflow-hidden">
-          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex flex-col h-full overflow-hidden shadow-sm">
+        <div className={`lg:col-span-3 flex-col min-h-0 overflow-hidden ${mobileTab === 'queue' ? 'flex' : 'hidden lg:flex'}`}>
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex flex-col h-[calc(100dvh-185px)] lg:h-full overflow-hidden shadow-sm">
             {/* Header with dots */}
             <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
@@ -572,7 +638,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
               </div>
 
               <button
-                onClick={() => startBidding()}
+                onClick={() => { startBidding(); setMobileTab('stage'); }}
                 disabled={!selectedPlayer || Boolean(activeSession) || actionLoading}
                 className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                   selectedPlayer && !activeSession
@@ -591,8 +657,8 @@ export default function AuctionControlView({ sport = 'cricket' }) {
         </div>
 
         {/* COLUMN 2 (CENTER): Active Auction Stage */}
-        <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden">
-          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm min-h-115">
+        <div className={`lg:col-span-6 flex-col min-h-0 overflow-hidden ${mobileTab === 'stage' ? 'flex' : 'hidden lg:flex'}`}>
+          <div className="bg-white border border-[#e8e2d5] rounded-2xl flex-1 flex flex-col overflow-hidden shadow-sm h-[calc(100dvh-185px)] lg:h-full lg:min-h-115">
             {/* Header with dots */}
             <div className="flex items-center gap-1.5 px-4 py-3 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">
               <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]/30" />
@@ -602,11 +668,11 @@ export default function AuctionControlView({ sport = 'cricket' }) {
             </div>
 
             {/* Stage Body */}
-            <div className="flex-1 p-6 flex flex-col justify-between overflow-y-auto min-h-0 relative">
+            <div className="flex-1 p-4 sm:p-6 flex flex-col justify-between overflow-y-auto min-h-0 relative">
               {activePlayer ? (
                 <>
                   {/* Active Player Card with Full Bleed Photo & Overlays matching Image 2 */}
-                  <div className="relative rounded-3xl overflow-hidden shadow-md flex-1 min-h-75 border border-[#e8e2d5] bg-white flex flex-col justify-end mb-4">
+                  <div className="relative rounded-3xl overflow-hidden shadow-md flex-1 min-h-[260px] sm:min-h-75 border border-[#e8e2d5] bg-white flex flex-col justify-end mb-4">
                     {activePlayer.photo ? (
                       <>
                         <Image
@@ -825,7 +891,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                 </>
               ) : (
                 /* Empty Stage */
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#9ca3af]">
+                <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center text-[#9ca3af] min-h-[260px]">
                   <div className="w-16 h-16 rounded-full border border-[#e8e2d5] flex items-center justify-center mb-3 bg-[#faf8f5]">
                     {isFootball ? (
                       <FootballIcon className="w-8 h-8 text-[#0d3a24]/40" />
@@ -833,8 +899,16 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                       <CricketIcon className="w-8 h-8 text-[#c59b27]/40" />
                     )}
                   </div>
-                  <p className="text-[#111827] font-bold text-sm mb-1">No Active Auction</p>
-                  <p className="text-[#6b7280] text-xs max-w-xs">Select a player from the queue or resale list and click Start Bidding</p>
+                  <p className="text-[#111827] font-bold text-base mb-1">No Active Auction</p>
+                  <p className="text-[#6b7280] text-xs max-w-xs mb-4">Select a player from the queue or resale list and click Start Bidding</p>
+                  <button
+                    type="button"
+                    onClick={() => setMobileTab('queue')}
+                    className="lg:hidden px-4 py-2.5 rounded-xl text-xs font-bold bg-[#0d3a24] text-white shadow-md flex items-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <span>Open Player Queue ({availableQueue.length} Players)</span>
+                    <span>→</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -842,7 +916,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
         </div>
 
         {/* COLUMN 3 (RIGHT): Two Stacked Panels (Bid-Feed & Resale) */}
-        <div className="lg:col-span-3 flex flex-col gap-4 min-h-0 overflow-hidden">
+        <div className={`lg:col-span-3 flex-col gap-4 min-h-0 overflow-hidden h-[calc(100dvh-185px)] lg:h-full ${mobileTab === 'feed' ? 'flex' : 'hidden lg:flex'}`}>
 
           {/* Top Panel: Bid Feed */}
           <div className="bg-white border border-[#e8e2d5] rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden shadow-sm">
@@ -868,8 +942,8 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                         : 'bg-[#faf8f5] border-[#e8e2d5] text-[#4b5563]'
                     }`}
                   >
-                    <span className="font-bold truncate max-w-37.5">{b.teamName}</span>
-                    <span className={`font-black tabular-nums text-sm ${i === 0 ? 'text-[#c59b27]' : 'text-[#0d3a24]'}`}>
+                    <span className="font-bold truncate flex-1 min-w-0 pr-2">{b.teamName}</span>
+                    <span className={`font-black tabular-nums text-sm shrink-0 ${i === 0 ? 'text-[#c59b27]' : 'text-[#0d3a24]'}`}>
                       {b.amount} pts
                     </span>
                   </div>
