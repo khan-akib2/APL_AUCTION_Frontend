@@ -57,6 +57,14 @@ export default function LoginPage() {
         try { localStorage.removeItem('apl_saved_email'); } catch {}
       }
 
+      if (data.user.role === 'captain') {
+        try {
+          if (typeof document !== 'undefined' && document.documentElement?.requestFullscreen) {
+            await document.documentElement.requestFullscreen().catch(() => {});
+          }
+        } catch {}
+      }
+
       login(data.token, data.user);
       toast(`Signed in successfully as ${data.user.name || data.user.role}`, 'success');
       router.push(data.user.role === 'admin' ? '/admin' : '/captain');
