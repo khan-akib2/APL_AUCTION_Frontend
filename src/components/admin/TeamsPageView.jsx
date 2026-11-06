@@ -252,7 +252,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const handleResetAll = () => {
     setConfirmModal({
       title: `Reset All ${sportLabel} Teams?`,
-      message: `This will restore all ${sportLabel.toLowerCase()} team budgets to their starting points (1000 pts), clear all squads, restore reveal tokens, and make all sold players available for auction again. Are you sure you want to proceed?`,
+      message: `This will restore all ${sportLabel.toLowerCase()} team budgets to their starting points (1000 pts), clear all squads, and make all sold players available for auction again. Are you sure you want to proceed?`,
       confirmText: 'Reset All Teams',
       onConfirm: async () => {
         setConfirmModal(null);
@@ -336,16 +336,6 @@ export default function TeamsPageView({ sport = 'cricket' }) {
         }
       },
     });
-  };
-
-  const handleAddToken = async (teamId, teamName) => {
-    const res = await request(`/api/teams/${teamId}/add-token`, { method: 'POST' });
-    if (res?.error) toast(res.error, 'error');
-    else {
-      toast(`+1 reveal token → ${teamName}`, 'success');
-      setTeams(prev => prev.map(t => t._id === teamId ? { ...t, revealTokens: (t.revealTokens || 0) + 1 } : t));
-      setDetailTeam(prev => prev && prev._id === teamId ? { ...prev, revealTokens: (prev.revealTokens || 0) + 1 } : prev);
-    }
   };
 
   if (loading) return (
@@ -467,27 +457,6 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                           </div>
                         </div>
 
-                        {/* Tokens info */}
-                        <div className="flex items-center justify-between py-1 mb-3 text-xs">
-                          <span className="text-purple-700 font-medium flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            Reveal tokens: <strong>{team.revealTokens ?? 1}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddToken(team._id, team.name);
-                            }}
-                            className="text-[11px] text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-lg transition-colors font-semibold"
-                          >
-                            + Token
-                          </button>
-                        </div>
-
                         {/* Card actions */}
                         <div className="pt-2 border-t border-gray-100 flex flex-col gap-1.5">
                           <button
@@ -593,7 +562,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
             </div>
 
             {/* Quick Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4 shrink-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4 shrink-0">
               <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center">
                 <span className="text-[#6b7280] text-[10px] uppercase font-bold tracking-wider block">Purse Left</span>
                 <span className="text-xl sm:text-2xl font-black text-[#0d3a24] tabular-nums block">{detailTeam.budget}</span>
@@ -610,19 +579,6 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                   {detailTeam.players?.length || detailTeam.playerCount || 0} / {detailTeam.teamSize || 7}
                 </span>
                 <span className="text-[#9ca3af] text-[10px]">players signed</span>
-              </div>
-              <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-3 text-center flex flex-col justify-between">
-                <div>
-                  <span className="text-purple-700 text-[10px] uppercase font-bold tracking-wider block">Tokens</span>
-                  <span className="text-xl sm:text-2xl font-black text-purple-700 tabular-nums block">{detailTeam.revealTokens ?? 1}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleAddToken(detailTeam._id, detailTeam.name)}
-                  className="mt-1 text-[10px] text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg py-0.5 font-bold transition-colors"
-                >
-                  + Add Token
-                </button>
               </div>
             </div>
 
