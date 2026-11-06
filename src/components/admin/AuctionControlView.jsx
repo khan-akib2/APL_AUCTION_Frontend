@@ -106,17 +106,25 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       const amount = data.amount ?? data.currentBid;
       const teamId = data.teamId ?? data.bidderTeamId;
       const teamName = data.teamName ?? data.bidderTeamName;
+      if (!amount || !teamName) return;
+
       setActiveSession(prev => prev ? {
         ...prev,
         currentBid: amount,
         currentHighestBidder: teamId,
         currentHighestBidderName: teamName,
       } : prev);
-      setBidHistory(prev => [{
-        teamName,
-        amount,
-        createdAt: new Date().toISOString(),
-      }, ...prev]);
+
+      setBidHistory(prev => {
+        if (prev.length > 0 && prev[0].amount === amount && prev[0].teamName === teamName) {
+          return prev;
+        }
+        return [{
+          teamName,
+          amount,
+          createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
+        }, ...prev];
+      });
     };
 
     const handleFinalizing = (data) => {

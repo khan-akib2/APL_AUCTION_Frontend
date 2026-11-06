@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { useSocket } from '@/context/SocketContext';
@@ -36,6 +36,7 @@ export default function CaptainDashboard() {
   const [revealOverlayPlayer, setRevealOverlayPlayer] = useState(null);
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
+  const bidListRef = useRef(null);
 
   const captainSport = team?.sport || user?.sport || 'cricket';
 
@@ -111,18 +112,31 @@ export default function CaptainDashboard() {
       const amount = data.amount ?? data.currentBid;
       const teamId = data.teamId ?? data.bidderTeamId;
       const teamName = data.teamName ?? data.bidderTeamName;
+      if (!amount || !teamName) return;
+
       setActiveSession(prev => prev ? {
         ...prev,
         currentBid: amount,
         currentHighestBidder: teamId,
         currentHighestBidderName: teamName,
       } : prev);
-      setBidHistory(prev => [{
-        teamName,
-        amount,
-        createdAt: new Date().toISOString(),
-      }, ...prev]);
-      playBidSound();
+
+      setBidHistory(prev => {
+        // Prevent duplicate consecutive bids (e.g. from multiple socket events/aliases)
+        if (prev.length > 0 && prev[0].amount === amount && prev[0].teamName === teamName) {
+          return prev;
+        }
+        playBidSound();
+        return [{
+          teamName,
+          amount,
+          createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
+        }, ...prev];
+      });
+
+      if (bidListRef.current) {
+        bidListRef.current.scrollTop = 0;
+      }
     };
 
     const handleTimerTick = (data) => {
@@ -335,12 +349,12 @@ export default function CaptainDashboard() {
       </header>
 
       {/* Main Bidding Arena */}
-      <div className="p-4 lg:p-6 flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+      <div className="p-4 lg:p-6 flex-1 min-h-0 overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
         {activeSession && activePlayer ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-1 gap-4 h-full min-h-0">
 
             {/* LEFT: Bid Controls & History */}
-            <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full">
+            <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full min-h-0">
               {/* Bid Control Box */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm shrink-0">
                 <div className="px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5]">
@@ -406,17 +420,17 @@ export default function CaptainDashboard() {
               </div>
 
               {/* Bid history box */}
-              <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1">
+              <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1 max-h-[260px] sm:max-h-[300px]">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#e8e2d5] bg-[#faf8f5] shrink-0">
                   <p className="text-[#111827] text-xs font-bold uppercase tracking-wider">Bid History</p>
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24]">
                     {bidHistory.length}
                   </span>
                 </div>
-                <div className="overflow-y-auto divide-y divide-gray-100 flex-1 min-h-0 p-2">
+                <div ref={bidListRef} className="overflow-y-auto divide-y divide-gray-100 flex-1 min-h-0 p-2 max-h-[200px] sm:max-h-[240px]">
                   {bidHistory.length === 0 && <p className="text-[#9ca3af] text-xs text-center py-6">No bids placed yet</p>}
                   {bidHistory.map((b, i) => (
-                    <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-xl ${i === 0 ? 'bg-amber-50 text-[#111827] font-semibold' : 'text-[#4b5563]'}`}>
+                    <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${i === 0 ? 'bg-amber-50 text-[#111827] font-semibold' : 'text-[#4b5563]'}`}>
                       <span className="text-xs truncate">{b.teamName}</span>
                       <span className={`text-xs font-black tabular-nums ml-2 ${i === 0 ? 'text-[#c59b27]' : 'text-[#0d3a24]'}`}>{b.amount} pts</span>
                     </div>
@@ -426,9 +440,9 @@ export default function CaptainDashboard() {
             </div>
 
             {/* CENTER: Player Card */}
-            <div className="lg:col-span-6 flex flex-col overflow-hidden h-full">
+            <div className="lg:col-span-6 flex flex-col overflow-hidden h-full min-h-0">
               {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
-                <div className="h-full">
+                <div className="h-full min-h-0 flex-1">
                   <MysteryPlayerCard
                     player={activePlayer}
                     revealTokens={team?.revealTokens ?? 0}
@@ -438,7 +452,7 @@ export default function CaptainDashboard() {
                   />
                 </div>
               ) : (
-                <div className="relative rounded-3xl overflow-hidden shadow-md h-full border border-[#e8e2d5] bg-white flex flex-col justify-end">
+                <div className="relative rounded-3xl overflow-hidden shadow-md h-full border border-[#e8e2d5] bg-white flex flex-col justify-end min-h-0">
                   {activePlayer.photo ? (
                     <>
                       <Image
@@ -497,7 +511,7 @@ export default function CaptainDashboard() {
             </div>
 
             {/* RIGHT: Budget + Squad */}
-            <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full">
+            <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full min-h-0">
               {/* Budget Card */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 shadow-sm shrink-0">
                 <div className="flex items-center justify-between mb-2">

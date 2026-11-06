@@ -240,6 +240,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       if (data?.sport && data.sport !== sport) return;
       const bidAmt = data.currentBid ?? data.amount;
       const bidderName = data.bidderTeamName ?? data.teamName ?? '';
+      if (!bidAmt || !bidderName) return;
+
       setActiveSession(prev => {
         if (!prev) {
           fetchActiveAuction();
@@ -251,8 +253,14 @@ export default function AudienceView({ initialSport = 'cricket' }) {
           currentHighestBidderName: bidderName,
         };
       });
-      setBidHistory(prev => [{ teamName: bidderName, amount: bidAmt }, ...prev]);
-      playBidSound();
+
+      setBidHistory(prev => {
+        if (prev.length > 0 && prev[0].amount === bidAmt && prev[0].teamName === bidderName) {
+          return prev;
+        }
+        playBidSound();
+        return [{ teamName: bidderName, amount: bidAmt }, ...prev];
+      });
     };
 
     const handleTimer = (data) => {
