@@ -473,7 +473,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
       </div>
 
       {/* Players List Table */}
-      <div className="flex-1 overflow-hidden p-4 lg:p-8">
+      <div className="flex-1 overflow-hidden p-3 sm:p-4 lg:p-8">
         <div className="h-full border border-[#e8e2d5] rounded-2xl overflow-hidden flex flex-col bg-white shadow-sm">
           <div className="flex-1 overflow-y-auto">
             {loading ? (

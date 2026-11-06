@@ -752,12 +752,12 @@ export default function CaptainDashboard() {
       </header>
 
       {/* Main Bidding Arena */}
-      <div className="p-4 lg:p-6 flex-1 min-h-0 overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+      <div className="p-3 sm:p-4 lg:p-6 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:h-[calc(100vh-64px)]">
         {activeSession && activePlayer ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-1 gap-4 h-full min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-1 gap-4 min-h-0 lg:h-full">
 
-            {/* LEFT: Bid Controls & History */}
-            <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full min-h-0">
+            {/* LEFT: Bid Controls & History (Order 2 on mobile, Order 1 on desktop) */}
+            <div className="order-2 lg:order-1 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full min-h-0">
               {/* Bid Control Box */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm shrink-0">
                 <div className="px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-between">
@@ -845,8 +845,8 @@ export default function CaptainDashboard() {
               </div>
             </div>
 
-            {/* CENTER: Player Card */}
-            <div className="lg:col-span-6 flex flex-col overflow-hidden h-full min-h-0">
+            {/* CENTER: Player Card (Order 1 on mobile, Order 2 on desktop) */}
+            <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col overflow-hidden min-h-[350px] sm:min-h-[420px] lg:h-full lg:min-h-0">
               {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                 <div className="h-full min-h-0 flex-1 relative">
                   <MysteryPlayerCard
@@ -927,8 +927,8 @@ export default function CaptainDashboard() {
               )}
             </div>
 
-            {/* RIGHT: Budget + Squad */}
-            <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full min-h-0">
+            {/* RIGHT: Budget + Squad (Order 3 on mobile and desktop) */}
+            <div className="order-3 lg:order-3 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full min-h-0">
               {/* Budget Card */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 shadow-sm shrink-0">
                 <div className="flex items-center justify-between mb-2">

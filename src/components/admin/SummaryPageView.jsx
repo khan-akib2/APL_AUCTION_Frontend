@@ -95,7 +95,7 @@ export default function SummaryPageView({ sport = 'cricket' }) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-[#f8f6f0] min-h-screen text-[#111827]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold font-serif text-[#111827] flex items-center gap-2">
             {isFootball ? <FootballIcon className="w-6 h-6 text-[#0d3a24]" /> : <CricketIcon className="w-6 h-6 text-[#c59b27]" />}

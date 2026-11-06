@@ -360,7 +360,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   return (
     <div className="flex flex-col min-h-screen lg:h-[calc(100vh-48px)] bg-[#f8f6f0]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 lg:px-8 py-5 border-b border-[#e8e2d5] bg-white shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 lg:px-8 py-4 sm:py-5 border-b border-[#e8e2d5] bg-white gap-3 shrink-0">
         <div>
           <h1 className="text-xl font-bold font-serif text-[#111827] flex items-center gap-2">
             {isFootball ? (
@@ -372,7 +372,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
           </h1>
           <p className="text-[#6b7280] text-xs mt-0.5">{teams.length} clubs enrolled</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <button
             onClick={handleResetAll}
             disabled={resetting}
@@ -404,7 +404,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden p-4 lg:p-8">
+      <div className="flex-1 overflow-hidden p-3 sm:p-4 lg:p-8">
         <div className="h-full border border-[#e8e2d5] rounded-2xl overflow-hidden flex flex-col bg-white shadow-sm">
           {/* Header Bar */}
           <div className="flex items-center gap-1.5 px-4 py-2.5 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">

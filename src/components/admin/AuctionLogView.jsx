@@ -30,7 +30,7 @@ export default function AuctionLogView({ sport = 'cricket' }) {
   return (
     <div className="flex flex-col min-h-screen lg:h-[calc(100vh-48px)] bg-[#f8f6f0] text-[#111827]">
       {/* Header */}
-      <div className="px-4 lg:px-8 py-5 border-b border-[#e8e2d5] bg-white shrink-0 flex items-center justify-between">
+      <div className="px-4 lg:px-8 py-4 sm:py-5 border-b border-[#e8e2d5] bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold font-serif text-[#111827] flex items-center gap-2">
             {isFootball ? <FootballIcon className="w-5 h-5 text-[#0d3a24]" /> : <CricketIcon className="w-5 h-5 text-[#c59b27]" />}
@@ -41,14 +41,14 @@ export default function AuctionLogView({ sport = 'cricket' }) {
         <button
           onClick={() => setClearConfirm(true)}
           disabled={logs.length === 0}
-          className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-40"
+          className="self-start sm:self-auto bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-40"
         >
           Clear All
         </button>
       </div>
 
       {/* Main Table Box */}
-      <div className="flex-1 overflow-hidden p-4 lg:p-8">
+      <div className="flex-1 overflow-hidden p-3 sm:p-4 lg:p-8">
         <div className="h-full border border-[#e8e2d5] rounded-2xl overflow-hidden flex flex-col bg-white shadow-sm">
           {/* Header Bar */}
           <div className="flex items-center gap-1.5 px-4 py-2.5 bg-[#faf8f5] border-b border-[#e8e2d5] shrink-0">

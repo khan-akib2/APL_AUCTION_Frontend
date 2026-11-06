@@ -470,16 +470,16 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       </div>
 
       {/* Main View Area */}
-      <div className="flex-1 min-h-0 flex flex-col p-4 lg:p-6 overflow-hidden z-10" style={{ height: 'calc(100vh - 110px)' }}>
+      <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 lg:p-6 overflow-y-auto lg:overflow-hidden z-10 lg:h-[calc(100vh-110px)]">
 
         {/* Auction Tab */}
         {tab === 'auction' && (
           <>
             {activeSession && activePlayer ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden min-h-0 h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 lg:h-full">
                 
-                {/* LEFT: Current Bid */}
-                <div className="lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-hidden">
+                {/* LEFT: Current Bid (Order 2 on mobile) */}
+                <div className="order-2 lg:order-1 lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-hidden">
                   <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 shadow-sm shrink-0">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[#6b7280] text-[10px] uppercase tracking-widest font-bold">Highest Bid</p>
@@ -529,8 +529,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                   </div>
                 </div>
 
-                {/* CENTER: Player Card */}
-                <div className="lg:col-span-6 flex flex-col min-h-0 overflow-hidden h-full">
+                {/* CENTER: Player Card (Order 1 on mobile) */}
+                <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col min-h-[350px] sm:min-h-[420px] lg:h-full overflow-hidden">
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                     <div className="flex-1 h-full min-h-0 overflow-hidden relative">
                       <MysteryPlayerCard player={activePlayer} revealTokens={null} />
@@ -611,8 +611,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                   )}
                 </div>
 
-                {/* RIGHT: Bid History */}
-                <div className="lg:col-span-3 bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden flex flex-col min-h-0 h-full shadow-sm">
+                {/* RIGHT: Bid History (Order 3 on mobile) */}
+                <div className="order-3 lg:order-3 lg:col-span-3 bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden flex flex-col min-h-0 lg:h-full shadow-sm">
                   <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5] shrink-0">
                     <p className="text-[#111827] text-xs font-bold uppercase tracking-wider">
                       {isFootball ? 'Match Bid Feed' : 'Live Bid Feed'}
