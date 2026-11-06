@@ -214,9 +214,7 @@ export default function CaptainDashboard() {
         }
       }
     }
-    if (sessionRes?.lastSold) {
-      setLastSold(sessionRes.lastSold);
-    }
+    setLastSold(sessionRes?.lastSold || null);
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
       setActivePlayer(sessionRes.session.playerId);
@@ -635,8 +633,16 @@ export default function CaptainDashboard() {
     socket.on("auction:sold", handleSold);
     socket.on("auction:unsold", handleUnsold);
     socket.on("auctionFinalized", handleFinalized);
-    socket.on("auction:resale", () => loadData());
-    socket.on("teams:reset", () => loadData());
+    socket.on("auction:resale", () => {
+      setLastSold(null);
+      setSoldAnnouncement(null);
+      loadData();
+    });
+    socket.on("teams:reset", () => {
+      setLastSold(null);
+      setSoldAnnouncement(null);
+      loadData();
+    });
     socket.on("team:token_added", (d) => {
       if (d.teamId === team?._id)
         setTeam((prev) =>
