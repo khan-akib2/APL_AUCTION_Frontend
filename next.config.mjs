@@ -1,5 +1,5 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,20 +9,20 @@ const nextConfig = {
   reactCompiler: true,
 
   images: {
-    formats: ['image/avif', 'image/webp'],
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'apl-auction-backend.onrender.com',
+        protocol: "https",
+        hostname: "apl-auction-backend.onrender.com",
       },
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '4000',
+        protocol: "http",
+        hostname: "localhost",
+        port: "4000",
       },
       {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
+        protocol: "https",
+        hostname: "res.cloudinary.com",
       },
     ],
     deviceSizes: [640, 750, 828, 1080, 1200],
@@ -36,50 +36,49 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
+            key: "X-Frame-Options",
+            value: "SAMEORIGIN",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
           {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin-allow-popups',
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
           },
 
           //new gpt key
           {
-  key: 'Content-Security-Policy',
-  value: [
-    "default-src 'self'",
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
 
-    // Scripts
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              // Scripts
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
 
-    // Styles
-    "style-src 'self' 'unsafe-inline'",
+              // Styles
+              "style-src 'self' 'unsafe-inline'",
 
-    // Images
-    "img-src 'self' data: blob: https: http:",
+              // Images
+              "img-src 'self' data: blob: https: http:",
 
-    // API requests + sockets
-    "connect-src 'self' https://apl-auction-backend.onrender.com https://*.vercel.app http://localhost:4000 ws://localhost:4000 wss://apl-auction-backend.onrender.com https://vitals.vercel-insights.com",
+              // API requests + sockets
+              "connect-src 'self' https://api-apl.nexcoreinstitute.org wss://api-apl.nexcoreinstitute.org https://apl-auction-backend.onrender.com https://*.vercel.app http://localhost:4000 ws://localhost:4000 wss://apl-auction-backend.onrender.com https://vitals.vercel-insights.com",
+              // Fonts
+              "font-src 'self' data: https:",
 
-    // Fonts
-    "font-src 'self' data: https:",
-
-    // Frames
-    "frame-ancestors 'self'",
-  ].join('; '),
-},
+              // Frames
+              "frame-ancestors 'self'",
+            ].join("; "),
+          },
         ],
       },
     ];
