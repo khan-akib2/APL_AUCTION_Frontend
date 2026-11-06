@@ -137,7 +137,7 @@ export default function CaptainDashboard() {
     } catch (err) {
       console.error('Failed to report anti-cheat lockout:', err);
     }
-  }, [team?._id, captainSport, request, toast]);
+  }, [team, captainSport, request, toast]);
 
   // Anti-cheat detection listeners (active during live bidding rounds only)
   useEffect(() => {
