@@ -287,6 +287,9 @@ export default function AudienceView({ initialSport = 'cricket' }) {
         playBidSound();
         return [{ teamName: bidderName, amount: numAmt }, ...prev];
       });
+
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
     };
 
     const handleTimer = (data) => {

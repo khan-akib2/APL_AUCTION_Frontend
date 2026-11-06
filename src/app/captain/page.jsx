@@ -162,6 +162,8 @@ export default function CaptainDashboard() {
       if (bidListRef.current) {
         bidListRef.current.scrollTop = 0;
       }
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
     };
 
     const handleTimerTick = (data) => {
@@ -244,7 +246,7 @@ export default function CaptainDashboard() {
   }, [socket, captainSport, team?._id, loadData, toast]);
 
   const placeBid = async (increment) => {
-    if (!activeSession || !team || bidding || finalizingState) return;
+    if (!activeSession || !team || bidding || activeSession.status === 'closed') return;
     const nextBid = activeSession.currentBid + increment;
     if (team.budget < nextBid) return toast('Insufficient budget', 'warning');
     const maxSquad = team.teamSize || 7;
@@ -262,7 +264,12 @@ export default function CaptainDashboard() {
       }),
     });
     setBidding(false);
-    if (res?.error) toast(res.error, 'error');
+    if (res?.error) {
+      toast(res.error, 'error');
+    } else {
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
+    }
   };
 
   const handleReveal = async () => {
@@ -305,7 +312,7 @@ export default function CaptainDashboard() {
   );
 
   const isLeading = activeSession?.currentHighestBidder === team._id;
-  const canBid = activeSession && !isLeading && (team.playerCount || 0) < 7 && !finalizingState;
+  const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed';
   const budgetPct = Math.round(((team.pointsSpent || 0) / 1000) * 100);
 
   return (
@@ -383,30 +390,15 @@ export default function CaptainDashboard() {
 
                 {/* Quick Bid Increment Buttons */}
                 <div className="p-4 space-y-2.5">
-                  {/* Urgent 3, 2, 1 Countdown Alert */}
-                  {timer.remaining !== null && timer.remaining <= 3 && timer.remaining > 0 && !finalizingState && (
-                    <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="banner" />
-                  )}
-
-                  {finalizingState && (
-                    <div className="px-3 py-2 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-bold animate-pulse">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
-                        <span>Bidding Locked — Finalizing</span>
-                      </div>
-                      <span className="font-mono text-sm">{finalizingCountdown}s</span>
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-4 gap-2">
                     {[1, 3, 5, 10].map(amt => {
                       const nextBid = activeSession.currentBid + amt;
-                      const canBidAmt = canBid && team.budget >= nextBid && !finalizingState;
+                      const canBidAmt = canBid && team.budget >= nextBid;
                       return (
                         <button
                           key={amt}
                           onClick={() => placeBid(amt)}
-                          disabled={!canBidAmt || bidding || Boolean(finalizingState)}
+                          disabled={!canBidAmt || bidding}
                           className="bg-[#0d3a24] hover:bg-[#154d32] text-white font-black py-3 rounded-2xl text-xs disabled:opacity-30 disabled:cursor-not-allowed flex flex-col items-center justify-center transition-all shadow-sm active:scale-95"
                         >
                           <span className="text-xs font-black">+{amt}</span>
@@ -416,10 +408,20 @@ export default function CaptainDashboard() {
                     })}
                   </div>
 
+                  {finalizingState && (
+                    <div className="px-3 py-1.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-bold animate-pulse">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                        <span>Finalizing sale...</span>
+                      </div>
+                      <span className="font-mono text-sm">{finalizingCountdown}s</span>
+                    </div>
+                  )}
+
                   {bidding && <div className="flex justify-center"><Spinner size="sm" /></div>}
                   {!canBid && activeSession && (
                     <p className="text-center text-[#9ca3af] text-[11px] pt-1 font-medium">
-                      {finalizingState ? 'Bidding locked' : (team?.playerCount || 0) >= (team?.teamSize || 7) ? `Squad full (${team?.teamSize || 7}/${team?.teamSize || 7})` : isLeading ? 'You are leading the bid' : 'Insufficient budget'}
+                      {(team?.playerCount || 0) >= (team?.teamSize || 7) ? `Squad full (${team?.teamSize || 7}/${team?.teamSize || 7})` : isLeading ? 'You are leading the bid' : 'Insufficient budget'}
                     </p>
                   )}
                 </div>

@@ -159,6 +159,9 @@ export default function AuctionControlView({ sport = 'cricket' }) {
           createdAt: data.createdAt || data.timestamp || new Date().toISOString(),
         }, ...prev];
       });
+
+      setFinalizingState(null);
+      setFinalizingCountdown(0);
     };
 
     const handleTimerTick = (data) => {
