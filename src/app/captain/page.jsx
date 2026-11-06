@@ -363,14 +363,19 @@ export default function CaptainDashboard() {
             <div className="lg:col-span-3 flex flex-col gap-4 overflow-hidden h-full min-h-0">
               {/* Bid Control Box */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm shrink-0">
-                <div className="px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5]">
-                  <p className="text-[#6b7280] text-[10px] uppercase tracking-widest font-bold mb-1">Current Bid</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-black text-[#0d3a24] tabular-nums leading-none">
-                      {activeSession.currentBid}
-                    </span>
-                    <span className="text-[#6b7280] text-sm">pts</span>
+                <div className="px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-between">
+                  <div>
+                    <p className="text-[#6b7280] text-[10px] uppercase tracking-widest font-bold mb-1">Current Bid</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-black text-[#0d3a24] tabular-nums leading-none">
+                        {activeSession.currentBid}
+                      </span>
+                      <span className="text-[#6b7280] text-sm">pts</span>
+                    </div>
                   </div>
+                  {timer.remaining !== null && (
+                    <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="sm" />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-100 bg-white">
@@ -388,6 +393,11 @@ export default function CaptainDashboard() {
 
                 {/* Quick Bid Increment Buttons */}
                 <div className="p-4 space-y-2.5">
+                  {/* Urgent 3, 2, 1 Countdown Alert */}
+                  {timer.remaining !== null && timer.remaining <= 3 && timer.remaining > 0 && !finalizingState && (
+                    <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="banner" />
+                  )}
+
                   {finalizingState && (
                     <div className="px-3 py-2 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-xs text-amber-900 font-bold animate-pulse">
                       <div className="flex items-center gap-1.5">
@@ -497,6 +507,13 @@ export default function CaptainDashboard() {
                     <p className="text-[#6b7280] text-[9px] uppercase tracking-wider font-bold">Base</p>
                     <p className="text-[#0d3a24] font-black text-lg tabular-nums leading-none">{activePlayer.basePrice} pts</p>
                   </div>
+
+                  {/* 6-second Countdown Timer badge top-right */}
+                  {timer.remaining !== null && (
+                    <div className="absolute top-4 right-4 z-10">
+                      <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="lg" />
+                    </div>
+                  )}
 
                   {/* Player info — bottom overlay */}
                   <div className="relative z-10 px-6 pb-6 pt-10 text-white">

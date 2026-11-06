@@ -7,6 +7,8 @@ import { useToast } from '@/components/Toast';
 import Spinner from '@/components/Spinner';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 import SkillBadge from '@/components/SkillBadge';
+import AuctionTimer from '@/components/AuctionTimer';
+import { playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 
 function dedupeBids(bids) {
@@ -44,6 +46,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
   const [queueSearch, setQueueSearch] = useState('');
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
+  const [timer, setTimer] = useState({ remaining: null, paused: false });
 
   const loadData = useCallback(async () => {
     const [pRes, sRes] = await Promise.all([
@@ -55,6 +58,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setActiveSession(sRes.session);
       setActivePlayer(sRes.session.playerId);
       setBidHistory(dedupeBids(sRes.session.bids).slice().reverse());
+      setTimer({ remaining: sRes.session.timerRemaining, paused: sRes.session.timerPaused });
       if (sRes.session.status === 'finalizing') {
         const elapsed = Math.floor((Date.now() - new Date(sRes.session.finalizingAt || Date.now()).getTime()) / 1000);
         const rem = Math.max(0, 3 - elapsed);
@@ -72,6 +76,8 @@ export default function AuctionControlView({ sport = 'cricket' }) {
     } else {
       setActiveSession(null);
       setActivePlayer(null);
+      setBidHistory([]);
+      setTimer({ remaining: null, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
     }
@@ -113,6 +119,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setActivePlayer(p);
       setSelectedPlayer(p);
       setBidHistory([]);
+      setTimer({ remaining: s?.timerRemaining ?? 6, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
       loadData();
@@ -151,6 +158,12 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       });
     };
 
+    const handleTimerTick = (data) => {
+      if (data?.sport && data.sport !== sport) return;
+      setTimer({ remaining: data.remaining, paused: data.paused });
+      if (data.remaining <= 3 && data.remaining > 0) playTimerUrgentSound();
+    };
+
     const handleFinalizing = (data) => {
       if (data?.sport && data.sport !== sport) return;
       setFinalizingState(data);
@@ -166,6 +179,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setActivePlayer(null);
       setSelectedPlayer(null);
       setBidHistory([]);
+      setTimer({ remaining: null, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
       loadData();
@@ -178,6 +192,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       setActivePlayer(null);
       setSelectedPlayer(null);
       setBidHistory([]);
+      setTimer({ remaining: null, paused: false });
       setFinalizingState(null);
       setFinalizingCountdown(0);
       loadData();
@@ -185,6 +200,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
 
     socket.on('auction:start', handlePlayerNominated);
     socket.on('auction:bid_update', handleBidPlaced);
+    socket.on('auction:timer', handleTimerTick);
     socket.on('auction:finalizing', handleFinalizing);
     socket.on('auction:sold', handleSold);
     socket.on('auction:unsold', handleUnsold);
@@ -197,6 +213,7 @@ export default function AuctionControlView({ sport = 'cricket' }) {
       socket.emit('leaveRoom', { room: roomName, sport });
       socket.off('auction:start', handlePlayerNominated);
       socket.off('auction:bid_update', handleBidPlaced);
+      socket.off('auction:timer', handleTimerTick);
       socket.off('auction:finalizing', handleFinalizing);
       socket.off('auction:sold', handleSold);
       socket.off('auction:unsold', handleUnsold);
@@ -433,6 +450,13 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                       <p className="text-[#0d3a24] font-black text-lg tabular-nums leading-none">{activePlayer.basePrice} pts</p>
                     </div>
 
+                    {/* Live 6-second countdown timer badge top-right */}
+                    {timer.remaining !== null && (
+                      <div className="absolute top-4 right-4 z-10">
+                        <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="lg" />
+                      </div>
+                    )}
+
                     {/* Player info — bottom overlay */}
                     <div className="relative z-10 px-6 pb-5 pt-10 text-white">
                       <div className="flex items-center gap-2 mb-1.5">
@@ -457,6 +481,11 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                         {activeSession?.currentBid ?? activePlayer.basePrice} <span className="text-xs font-normal text-[#6b7280]">pts</span>
                       </div>
                     </div>
+                    {timer.remaining !== null && (
+                      <div className="text-center px-2">
+                        <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="md" />
+                      </div>
+                    )}
                     <div className="text-right">
                       <p className="text-[#6b7280] text-[10px] uppercase tracking-wider font-bold mb-0.5">LEADING</p>
                       <div className="text-base font-bold text-[#c59b27] truncate max-w-[180px]">
@@ -464,6 +493,13 @@ export default function AuctionControlView({ sport = 'cricket' }) {
                       </div>
                     </div>
                   </div>
+
+                  {/* Critical 3, 2, 1 Countdown Banner */}
+                  {timer.remaining !== null && timer.remaining <= 3 && timer.remaining > 0 && !finalizingState && (
+                    <div className="mb-3.5">
+                      <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="banner" />
+                    </div>
+                  )}
 
                   {/* Finalizing Overlay Banner */}
                   {finalizingState && (

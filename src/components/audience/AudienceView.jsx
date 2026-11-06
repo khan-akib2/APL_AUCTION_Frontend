@@ -6,7 +6,8 @@ import Image from 'next/image';
 import SkillBadge from '@/components/SkillBadge';
 import Logo from '@/components/Logo';
 import MysteryPlayerCard from '@/components/MysteryPlayerCard';
-import { playBidSound, playSoldSound, playUnsoldSound } from '@/lib/sounds';
+import AuctionTimer from '@/components/AuctionTimer';
+import { playBidSound, playSoldSound, playUnsoldSound, playTimerUrgentSound } from '@/lib/sounds';
 import { displaySkills } from '@/lib/skills';
 import { CricketIcon, FootballIcon } from '@/components/SportIcons';
 
@@ -290,6 +291,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
     const handleTimer = (data) => {
       if (data?.sport && data.sport !== sport) return;
       setTimer(data);
+      if (data.remaining <= 3 && data.remaining > 0) playTimerUrgentSound();
     };
 
     const handleFinalizing = (data) => {
@@ -473,9 +475,14 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                   <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 shadow-sm shrink-0">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[#6b7280] text-[10px] uppercase tracking-widest font-bold">Highest Bid</p>
-                      <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        Active
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {timer.remaining !== null && (
+                          <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="sm" />
+                        )}
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          Active
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-baseline gap-2 mb-4">
@@ -498,6 +505,10 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                         <span className="text-sm truncate font-semibold">{activeSession.currentHighestBidderName || 'No bids yet'}</span>
                       </div>
                     </div>
+
+                    {timer.remaining !== null && timer.remaining <= 3 && timer.remaining > 0 && !finalizingState && (
+                      <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="banner" className="mt-3" />
+                    )}
 
                     {finalizingState && (
                       <div className="mt-3.5 pt-3.5 border-t border-gray-100">
@@ -560,6 +571,13 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                         <p className="text-[#6b7280] text-[9px] uppercase tracking-wider font-bold">Base Price</p>
                         <p className="font-black text-lg text-[#0d3a24] tabular-nums leading-none">{activePlayer.basePrice} pts</p>
                       </div>
+
+                      {/* 6-second Countdown Timer Badge Top-Right */}
+                      {timer.remaining !== null && (
+                        <div className="absolute top-4 right-4 z-10">
+                          <AuctionTimer remaining={timer.remaining} paused={timer.paused} size="lg" />
+                        </div>
+                      )}
 
                       {/* Player Info Footer */}
                       <div className="relative z-10 px-6 pb-6 pt-10 text-white">
