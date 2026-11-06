@@ -37,15 +37,28 @@ export default function AdminSidebar() {
             APL {isFootball ? 'Football' : 'Cricket'}
           </span>
         </div>
-        <button
-          onClick={() => setOpen(!open)}
-          aria-label="Open navigation menu"
-          className="text-[#4b5563] hover:text-[#111827] transition-colors p-1"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleLogout}
+            aria-label="Sign out"
+            title="Sign out"
+            className="text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 active:scale-95 cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
+          </button>
+          <button
+            onClick={() => setOpen(!open)}
+            aria-label="Open navigation menu"
+            className="text-[#4b5563] hover:text-[#111827] transition-colors p-1"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -56,7 +69,7 @@ export default function AdminSidebar() {
       )}
 
       <aside className={`
-        fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 w-64 border-r border-[#e8e2d5] bg-white flex flex-col
+        fixed lg:sticky lg:top-0 top-0 left-0 h-[100dvh] max-h-[100dvh] z-50 w-64 border-r border-[#e8e2d5] bg-white flex flex-col
         transition-transform duration-200 shadow-sm
         ${open ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
@@ -126,7 +139,7 @@ export default function AdminSidebar() {
         </div>
 
         {/* Navigation links */}
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 min-h-0 px-3 py-2 space-y-1 overflow-y-auto">
           <p className="text-[10px] uppercase tracking-widest px-3 pb-1 text-[#9ca3af] font-semibold">
             Navigation
           </p>
@@ -137,7 +150,7 @@ export default function AdminSidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className={`flex items-center px-3.5 py-2.5 rounded-xl text-sm transition-all ${
+                className={`flex items-center px-3.5 py-2 rounded-xl text-sm transition-all ${
                   active
                     ? 'bg-[#0d3a24]/10 text-[#0d3a24] font-bold border border-[#0d3a24]/20 shadow-sm'
                     : 'text-[#4b5563] hover:text-[#111827] hover:bg-[#f4efe6]/70 font-medium'
@@ -150,19 +163,23 @@ export default function AdminSidebar() {
         </nav>
 
         {/* Footer actions */}
-        <div className="px-3 py-3 border-t border-[#e8e2d5] space-y-1 shrink-0 bg-[#faf8f5]">
+        <div className="px-3 pt-3 pb-6 sm:pb-3 border-t border-[#e8e2d5] space-y-1.5 shrink-0 bg-[#faf8f5]">
           <a
             href={isFootball ? '/audience/football' : '/audience'}
             target="_blank"
-            className="flex items-center px-3.5 py-2 rounded-xl text-xs font-semibold text-[#c59b27] hover:text-[#916922] hover:bg-amber-50/70 transition-colors"
+            className="flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-[#c59b27] hover:text-[#916922] hover:bg-amber-50/70 transition-colors"
           >
-            {isFootball ? 'Football Broadcast ↗' : 'Cricket Broadcast ↗'}
+            <span>{isFootball ? 'Football Broadcast' : 'Cricket Broadcast'}</span>
+            <span className="text-sm">↗</span>
           </a>
           <button
             onClick={handleLogout}
-            className="w-full text-left px-3.5 py-2 rounded-xl text-xs font-medium text-[#6b7280] hover:text-red-600 hover:bg-red-50/70 transition-colors"
+            className="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50/80 transition-colors active:scale-98 cursor-pointer border border-transparent hover:border-red-200"
           >
-            Sign Out
+            <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>

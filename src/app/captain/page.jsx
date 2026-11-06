@@ -1026,19 +1026,20 @@ export default function CaptainDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Anti-Cheat Shield Badge */}
-          <div className="flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 border border-emerald-300 bg-emerald-50 text-[#0d3a24] text-[11px] font-bold shadow-2xs">
+          <div className="flex items-center gap-1.5 rounded-xl px-2 sm:px-3 py-1.5 border border-emerald-300 bg-emerald-50 text-[#0d3a24] text-[11px] font-bold shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-            <span>Anti-Cheat Active</span>
+            <span className="hidden sm:inline">Anti-Cheat Active</span>
+            <span className="sm:hidden">Shield</span>
           </div>
 
           {/* Budget Pill */}
-          <div className="flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 border border-emerald-200 bg-emerald-50 text-[#0d3a24] shadow-sm">
-            <span className="font-black text-sm tabular-nums">
+          <div className="flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 border border-emerald-200 bg-emerald-50 text-[#0d3a24] shadow-sm">
+            <span className="font-black text-xs sm:text-sm tabular-nums">
               {team?.budget ?? 0}
             </span>
-            <span className="text-xs font-semibold">pts left</span>
+            <span className="text-[10px] sm:text-xs font-semibold">pts</span>
           </div>
 
           <button
@@ -1046,9 +1047,13 @@ export default function CaptainDashboard() {
               logout();
               router.push("/login");
             }}
-            className="text-[#6b7280] hover:text-red-600 text-xs font-medium px-2 py-1 transition-colors"
+            className="flex items-center gap-1 text-red-600 hover:text-red-700 bg-red-50/80 hover:bg-red-100/80 border border-red-200/80 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Sign out of auction"
           >
-            Sign Out
+            <svg className="w-3.5 h-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
           </button>
         </div>
       </header>
