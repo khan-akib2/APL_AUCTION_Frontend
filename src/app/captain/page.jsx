@@ -58,6 +58,7 @@ export default function CaptainDashboard() {
   const [lockReason, setLockReason] = useState(null);
   const bidListRef = useRef(null);
   const lockoutTriggeredRef = useRef(false);
+  const isBiddingRef = useRef(false);
 
   useEffect(() => {
     lockoutTriggeredRef.current = isLocked;
@@ -429,33 +430,47 @@ export default function CaptainDashboard() {
     };
   }, [socket, captainSport, team?._id, loadData, toast]);
 
+  const leaderId = typeof activeSession?.currentHighestBidder === 'object'
+    ? activeSession?.currentHighestBidder?._id?.toString()
+    : activeSession?.currentHighestBidder?.toString();
+  const currentTeamId = team?._id?.toString();
+  const isLeading = Boolean(leaderId && currentTeamId && leaderId === currentTeamId);
+
   const placeBid = async (increment) => {
-    if (!activeSession || !team || bidding || isLocked || activeSession.status === 'closed') return;
+    if (isBiddingRef.current || !activeSession || !team || bidding || isLocked || isLeading || activeSession.status === 'closed') {
+      if (isLeading) toast('Your team already holds the highest bid', 'info');
+      return;
+    }
     const nextBid = activeSession.currentBid + increment;
     if (team.budget < nextBid) return toast('Insufficient budget', 'warning');
     const maxSquad = team.teamSize || 7;
     if ((team.playerCount || team.players?.length || 0) >= maxSquad) return toast(`Squad is full (${maxSquad}/${maxSquad})`, 'warning');
 
+    isBiddingRef.current = true;
     setBidding(true);
-    const res = await request('/api/auction/bid', {
-      method: 'POST',
-      body: JSON.stringify({
-        sessionId: activeSession._id,
-        teamId: team._id,
-        amount: nextBid,
-        bidAmount: increment,
-        sport: captainSport,
-      }),
-    });
-    setBidding(false);
-    if (res?.error) {
-      toast(res.error, 'error');
-    } else {
-      setFinalizingState(null);
-      setFinalizingCountdown(0);
-      if (res?.session?.timerRemaining !== undefined) {
-        setTimer({ remaining: res.session.timerRemaining, paused: false });
+    try {
+      const res = await request('/api/auction/bid', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: activeSession._id,
+          teamId: team._id,
+          amount: nextBid,
+          bidAmount: increment,
+          sport: captainSport,
+        }),
+      });
+      if (res?.error) {
+        toast(res.error, 'error');
+      } else {
+        setFinalizingState(null);
+        setFinalizingCountdown(0);
+        if (res?.session?.timerRemaining !== undefined) {
+          setTimer({ remaining: res.session.timerRemaining, paused: false });
+        }
       }
+    } finally {
+      setBidding(false);
+      isBiddingRef.current = false;
     }
   };
 
@@ -566,7 +581,6 @@ export default function CaptainDashboard() {
     );
   }
 
-  const isLeading = activeSession?.currentHighestBidder === team._id;
   const isTimeEnded = timer.remaining !== null && timer.remaining <= 0;
   const isTimerPaused = Boolean(timer.paused);
   const canBid = Boolean(activeSession) && Boolean(team) && !isLeading && !isLocked && (team.playerCount || 0) < (team.teamSize || 7) && activeSession.status !== 'closed' && !isTimeEnded && !isTimerPaused;
