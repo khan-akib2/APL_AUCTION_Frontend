@@ -108,7 +108,7 @@ function TeamCard({ team, idx }) {
   });
 
   return (
-    <div className="border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md bg-white">
+    <div className="border border-[#e8e2d5] hover:border-[#0d3a24]/30 rounded-2xl overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md bg-white self-start h-fit">
       <button onClick={() => setExpanded(e => !e)} className="w-full p-4 sm:p-5 text-left">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -716,7 +716,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 No {sportLabel.toLowerCase()} clubs registered yet.
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start pb-4">
                 {teams.map((team, idx) => (
                   <TeamCard key={team._id} team={team} idx={idx} isFootball={isFootball} />
                 ))}
