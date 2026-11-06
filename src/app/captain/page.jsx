@@ -113,8 +113,8 @@ export default function CaptainDashboard() {
   // Anti-cheat lockout handler
   const triggerLockout = useCallback(
     async (reason) => {
-      // Grace period for browser dialogs (password breach warnings, autofill, permission popups) within first 5 seconds
-      if (mountTimeRef.current && Date.now() - mountTimeRef.current < 5000 && reason.includes("Switched away")) {
+      // Grace period for browser dialogs (password breach warnings, autofill, permission popups, fullscreen prompts) within first 5 seconds
+      if (mountTimeRef.current && Date.now() - mountTimeRef.current < 5000) {
         return;
       }
       if (lockoutTriggeredRef.current) return;
@@ -214,8 +214,8 @@ export default function CaptainDashboard() {
         }
       }
     }
-    if (sessionRes?.lastSold) {
-      setLastSold(sessionRes.lastSold);
+    if (sessionRes?.lastSold !== undefined) {
+      setLastSold(sessionRes.lastSold || null);
     }
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
@@ -636,7 +636,10 @@ export default function CaptainDashboard() {
     socket.on("auction:unsold", handleUnsold);
     socket.on("auctionFinalized", handleFinalized);
     socket.on("auction:resale", () => loadData());
-    socket.on("teams:reset", () => loadData());
+    socket.on("teams:reset", () => {
+      setLastSold(null);
+      loadData();
+    });
     socket.on("team:token_added", (d) => {
       if (d.teamId === team?._id)
         setTeam((prev) =>

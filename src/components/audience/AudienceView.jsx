@@ -202,8 +202,8 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
         if (!d || d.error) return; // Do not clear active auction state on network or auth errors!
-        if (d.lastSold) {
-          setLastSold(d.lastSold);
+        if (d.lastSold !== undefined) {
+          setLastSold(d.lastSold || null);
         }
         if (d.session) {
           setActiveSession(d.session);
@@ -381,7 +381,9 @@ export default function AudienceView({ initialSport = 'cricket' }) {
     });
     s.on('teams:reset', (data) => {
       if (data?.sport && data.sport !== sport) return;
+      setLastSold(null);
       fetchTeams();
+      fetchActiveAuction();
     });
 
     return () => {
