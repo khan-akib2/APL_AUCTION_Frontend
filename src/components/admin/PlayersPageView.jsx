@@ -484,7 +484,7 @@ export default function PlayersPageView({ sport = 'cricket' }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[650px]">
+                <table className="w-full text-sm min-w-162.5">
                   <thead className="sticky top-0 z-10 bg-[#f4efe6]">
                     <tr className="border-b border-[#e8e2d5] text-left text-[#4b5563] text-xs uppercase tracking-wider font-semibold">
                       <th className="px-4 py-3">Player</th>
