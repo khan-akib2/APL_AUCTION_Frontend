@@ -111,8 +111,8 @@ export default function CaptainDashboard() {
   // Anti-cheat lockout handler
   const triggerLockout = useCallback(
     async (reason) => {
-      // Grace period for browser dialogs (password breach warnings, autofill, permission popups) within first 5 seconds
-      if (mountTimeRef.current && Date.now() - mountTimeRef.current < 5000 && reason.includes("Switched away")) {
+      // Grace period for browser dialogs (password breach warnings, autofill, permission popups, fullscreen prompts) within first 5 seconds
+      if (mountTimeRef.current && Date.now() - mountTimeRef.current < 5000) {
         return;
       }
       if (lockoutTriggeredRef.current) return;
@@ -162,11 +162,7 @@ export default function CaptainDashboard() {
       if (inFs) {
         hasEnteredFsRef.current = true;
       } else if (hasEnteredFsRef.current && !isLocked) {
-        if (activeSession && (activeSession.status === "active" || activeSession.status === "finalizing")) {
-          triggerLockout("Exited Fullscreen during active bidding round");
-        } else {
-          setIsFullscreen(false);
-        }
+        triggerLockout("Exited Fullscreen kiosk mode");
       }
     };
 
@@ -177,7 +173,7 @@ export default function CaptainDashboard() {
       document.removeEventListener("fullscreenchange", checkFs);
       document.removeEventListener("webkitfullscreenchange", checkFs);
     };
-  }, [activeSession, isLocked, triggerLockout]);
+  }, [isLocked, triggerLockout]);
 
   const loadData = useCallback(async () => {
     const sportParam =
@@ -212,7 +208,9 @@ export default function CaptainDashboard() {
         }
       }
     }
-    setLastSold(sessionRes?.lastSold || null);
+    if (sessionRes?.lastSold !== undefined) {
+      setLastSold(sessionRes.lastSold || null);
+    }
     if (sessionRes?.session) {
       setActiveSession(sessionRes.session);
       setActivePlayer(sessionRes.session.playerId);
@@ -276,16 +274,16 @@ export default function CaptainDashboard() {
       }
     };
 
-    // 2. Window blur (only lock if tab is actually hidden / switched away)
+    // 2. Window blur (switching away, clicking another app, unminimizing terminal/tab, Alt-Tab)
     const handleWindowBlur = () => {
-      // NOTE: Chrome password breach notifications, autofill popups, or native permission dialogs
-      // steal window focus while the webpage remains completely visible on screen.
-      // Genuine tab switching or minimizing ALWAYS sets document.visibilityState to 'hidden'.
       setTimeout(() => {
-        if (document.visibilityState === "hidden") {
-          triggerLockout("Tab switch or browser minimized");
+        if (
+          typeof document !== "undefined" &&
+          (!document.hasFocus() || document.visibilityState === "hidden")
+        ) {
+          triggerLockout("Switched away from auction window");
         }
-      }, 300);
+      }, 250);
     };
 
     // 3. Page hide / tab navigation
@@ -386,7 +384,7 @@ export default function CaptainDashboard() {
       return false;
     };
 
-    // 8. Continuous DevTools detection (Docked & Undocked)
+    // 8. Continuous DevTools & Focus detection (Docked & Undocked)
     const checkDevTools = () => {
       // Check docked resize
       const threshold = 160;
@@ -406,9 +404,19 @@ export default function CaptainDashboard() {
       });
       console.log("%c", detector);
       console.clear();
+
+      // Check focus: unminimizing another app/terminal or clicking away
+      if (
+        typeof document !== "undefined" &&
+        (!document.hasFocus() || document.visibilityState === "hidden") &&
+        mountTimeRef.current &&
+        Date.now() - mountTimeRef.current > 5000
+      ) {
+        triggerLockout("Switched away from auction window");
+      }
     };
 
-    const devToolsInterval = setInterval(checkDevTools, 800);
+    const devToolsInterval = setInterval(checkDevTools, 500);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleWindowBlur);

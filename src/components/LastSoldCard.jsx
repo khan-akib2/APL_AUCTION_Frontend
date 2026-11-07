@@ -5,6 +5,7 @@ import { displaySkills } from '@/lib/skills';
 
 export default function LastSoldCard({ lastSold, className = '' }) {
   if (!lastSold || !lastSold.player) return null;
+  if (lastSold.player.status && lastSold.player.status !== 'sold') return null;
 
   const player = lastSold.player;
   const teamName = lastSold.teamName || lastSold.team?.name || 'Winning Team';
