@@ -1440,15 +1440,17 @@ export default function CaptainDashboard() {
                           <span className="text-[#c59b27] text-xs font-bold">
                             {p.soldPrice} pts
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setResellConfirmPlayer(p)}
-                            disabled={reselling}
-                            className="text-[10px] text-amber-800 hover:text-white bg-amber-100 hover:bg-amber-600 px-2 py-1 rounded-lg font-bold border border-amber-200 transition-colors cursor-pointer"
-                            title={`Resell ${p.name} back to the auction pool`}
-                          >
-                            Resell
-                          </button>
+                          {isTop && (
+                            <button
+                              type="button"
+                              onClick={() => setResellConfirmPlayer(p)}
+                              disabled={reselling}
+                              className="text-[10px] text-amber-900 hover:text-white bg-amber-100 hover:bg-amber-600 px-2 py-1 rounded-lg font-bold border border-amber-300 transition-colors cursor-pointer"
+                              title={`Resell highest player ${p.name} back to the auction pool`}
+                            >
+                              Resell
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
