@@ -36,24 +36,6 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Disable stale caching for dynamic HTML pages so deployments never reference deleted chunks
-        source: "/:path((?!_next/static|_next/image|favicon.ico|APL.png).*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "no-cache, no-store, max-age=0, must-revalidate",
-          },
-          {
-            key: "Pragma",
-            value: "no-cache",
-          },
-          {
-            key: "Expires",
-            value: "0",
-          },
-        ],
-      },
-      {
         source: "/(.*)",
         headers: [
           {
