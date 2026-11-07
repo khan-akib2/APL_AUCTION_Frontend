@@ -154,6 +154,15 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   // Dedicated Team Detail / Squad Modal
   const [detailTeam, setDetailTeam] = useState(null);
 
+  // Add Player to Team modal state
+  const [addPlayerModalTeam, setAddPlayerModalTeam] = useState(null);
+  const [availablePlayers, setAvailablePlayers] = useState([]);
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
+  const [playerSearchQuery, setPlayerSearchQuery] = useState('');
+  const [submittingAddPlayer, setSubmittingAddPlayer] = useState(false);
+
   // Quick-create captain modal state
   const [showCaptainModal, setShowCaptainModal] = useState(false);
   const [newCapName, setNewCapName] = useState('');
@@ -349,6 +358,78 @@ export default function TeamsPageView({ sport = 'cricket' }) {
         }
       },
     });
+  };
+
+  const openAddPlayerModal = async (team) => {
+    setAddPlayerModalTeam(team);
+    setSelectedPlayerId('');
+    setCustomPrice('');
+    setPlayerSearchQuery('');
+    setLoadingAvailable(true);
+    try {
+      const res = await request(`/api/players?sport=${sport}&pageSize=500`);
+      if (res?.players) {
+        const unassigned = res.players.filter(p => !p.soldTo && p.status !== 'sold');
+        setAvailablePlayers(unassigned);
+      }
+    } catch (err) {
+      console.error('Failed to load available players:', err);
+      toast('Failed to load available players', 'error');
+    } finally {
+      setLoadingAvailable(false);
+    }
+  };
+
+  const handleAddPlayerSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!addPlayerModalTeam || !selectedPlayerId || submittingAddPlayer) return;
+
+    const selPlayer = availablePlayers.find(p => p._id === selectedPlayerId);
+    if (!selPlayer) return toast('Please select a player', 'warning');
+
+    const priceNum = customPrice !== '' ? Number(customPrice) : (selPlayer.basePrice || 20);
+    if (isNaN(priceNum) || priceNum < 0) {
+      return toast('Please enter a valid non-negative price', 'warning');
+    }
+
+    if (addPlayerModalTeam.budget < priceNum) {
+      return toast(`Team has only ${addPlayerModalTeam.budget} pts available`, 'warning');
+    }
+
+    setSubmittingAddPlayer(true);
+    try {
+      const res = await request(`/api/teams/${addPlayerModalTeam._id}/add-player`, {
+        method: 'POST',
+        body: JSON.stringify({
+          playerId: selectedPlayerId,
+          price: priceNum,
+        }),
+      });
+
+      if (res?.error) {
+        toast(res.error, 'error');
+      } else {
+        toast(res.message || 'Player added successfully!', 'success');
+        setDetailTeam(prev => {
+          if (!prev || prev._id !== addPlayerModalTeam._id) return prev;
+          const newPlayerObj = res.player || { ...selPlayer, soldPrice: priceNum, soldTo: prev._id };
+          const updatedSquad = [...(prev.players || []).filter(p => p._id !== newPlayerObj._id), newPlayerObj];
+          return {
+            ...prev,
+            players: updatedSquad,
+            playerCount: (prev.playerCount || 0) + 1,
+            budget: Math.max(0, (prev.budget || 0) - priceNum),
+            pointsSpent: (prev.pointsSpent || 0) + priceNum,
+          };
+        });
+        setAddPlayerModalTeam(null);
+        load();
+      }
+    } catch {
+      toast('Failed to add player to team', 'error');
+    } finally {
+      setSubmittingAddPlayer(false);
+    }
   };
 
   if (loading) return (
@@ -646,6 +727,20 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                 <h3 className="text-xs uppercase font-bold tracking-wider text-[#6b7280]">
                   Signed Squad Members ({detailSquad.length} / {detailTeam.teamSize || 7})
                 </h3>
+                {detailSquad.length < (detailTeam.teamSize || 7) ? (
+                  <button
+                    type="button"
+                    onClick={() => openAddPlayerModal(detailTeam)}
+                    className="inline-flex items-center gap-1.5 bg-[#0d3a24] hover:bg-[#154d32] text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-xs"
+                    title="Add a player of your choice to this squad"
+                  >
+                    <span>+</span> Add Player
+                  </button>
+                ) : (
+                  <span className="text-[10px] uppercase font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                    Squad Full
+                  </span>
+                )}
               </div>
 
               {detailSquad.length === 0 ? (
@@ -654,7 +749,14 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                     —
                   </div>
                   <p className="text-sm font-semibold text-[#111827]">No players acquired yet</p>
-                  <p className="text-xs text-[#6b7280] mt-1">Players won in the live auction or assigned to this team will be shown here.</p>
+                  <p className="text-xs text-[#6b7280] mt-1 mb-3">Players won in the live auction or assigned to this team will be shown here.</p>
+                  <button
+                    type="button"
+                    onClick={() => openAddPlayerModal(detailTeam)}
+                    className="inline-flex items-center gap-1.5 bg-[#0d3a24] hover:bg-[#154d32] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-xs"
+                  >
+                    <span>+</span> Add Player
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -703,7 +805,16 @@ export default function TeamsPageView({ sport = 'cricket' }) {
 
             {/* Modal Footer */}
             <div className="flex items-center justify-between pt-4 mt-3 border-t border-[#e8e2d5] shrink-0 gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  disabled={detailSquad.length >= (detailTeam.teamSize || 7)}
+                  onClick={() => openAddPlayerModal(detailTeam)}
+                  className="bg-[#0d3a24] hover:bg-[#154d32] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5"
+                  title={detailSquad.length >= (detailTeam.teamSize || 7) ? 'Squad is full' : 'Add a player to this team'}
+                >
+                  <span>+</span> Add Player
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -741,13 +852,248 @@ export default function TeamsPageView({ sport = 'cricket' }) {
               <button
                 type="button"
                 onClick={() => setDetailTeam(null)}
-                className="bg-[#0d3a24] hover:bg-[#154d32] text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-sm"
+                className="bg-stone-200 hover:bg-stone-300 text-[#111827] text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow-sm"
               >
                 Close
               </button>
             </div>
           </div>
         </div>
+        );
+      })()}
+
+      {/* Add Player to Team Modal */}
+      {addPlayerModalTeam && (() => {
+        const teamSquadCount = (addPlayerModalTeam.players || []).length;
+        const maxCapacity = addPlayerModalTeam.teamSize || 7;
+        const filteredPlayers = availablePlayers.filter(p => {
+          if (!playerSearchQuery.trim()) return true;
+          const q = playerSearchQuery.toLowerCase();
+          const nameMatch = (p.name || '').toLowerCase().includes(q);
+          const skillMatch = (p.skills || []).some(s => s.toLowerCase().includes(q));
+          return nameMatch || skillMatch;
+        });
+        const selectedPlayer = availablePlayers.find(p => p._id === selectedPlayerId);
+        const priceNum = customPrice !== '' ? Number(customPrice) : (selectedPlayer?.basePrice || 20);
+        const remainingBudget = (addPlayerModalTeam.budget || 0) - (isNaN(priceNum) ? 0 : priceNum);
+        const isBudgetExceeded = remainingBudget < 0;
+
+        return (
+          <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-lg shadow-2xl border border-gray-100 flex flex-col max-h-[92vh]">
+              {/* Header */}
+              <div className="flex items-start justify-between pb-3 border-b border-[#e8e2d5] shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]" />
+                    <h2 className="text-lg font-bold font-serif text-[#111827]">
+                      Add Player to {addPlayerModalTeam.name}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-[#6b7280] mt-0.5">
+                    Available Purse: <span className="font-bold text-[#0d3a24]">{addPlayerModalTeam.budget} pts</span> • Squad: <span className="font-bold text-[#111827]">{teamSquadCount} / {maxCapacity}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAddPlayerModalTeam(null)}
+                  className="w-8 h-8 rounded-full bg-[#faf8f5] hover:bg-stone-200 text-[#6b7280] flex items-center justify-center text-sm font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <form onSubmit={handleAddPlayerSubmit} className="flex flex-col flex-1 min-h-0 pt-4 space-y-4">
+                {/* Search Bar */}
+                <div className="shrink-0">
+                  <label className="text-xs font-semibold text-[#4b5563] mb-1.5 block">
+                    Select Available {sportLabel} Player
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={playerSearchQuery}
+                      onChange={e => setPlayerSearchQuery(e.target.value)}
+                      placeholder="Search by player name or skill..."
+                      className="w-full bg-[#faf8f5] border border-[#e8e2d5] rounded-xl pl-9 pr-8 py-2 text-sm text-[#111827] placeholder-[#9ca3af] focus:outline-none focus:border-[#0d3a24] focus:bg-white transition-all shadow-2xs"
+                    />
+                    <svg className="w-4 h-4 text-[#9ca3af] absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    {playerSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setPlayerSearchQuery('')}
+                        className="text-xs text-[#9ca3af] hover:text-[#111827] absolute right-2.5 top-2.5 font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Available Players List */}
+                <div className="flex-1 overflow-y-auto border border-[#e8e2d5] rounded-2xl p-2 bg-[#faf8f5]/60 min-h-[160px] max-h-[220px]">
+                  {loadingAvailable ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Spinner size="md" />
+                    </div>
+                  ) : filteredPlayers.length === 0 ? (
+                    <div className="text-center py-8 text-[#9ca3af] text-xs">
+                      {availablePlayers.length === 0
+                        ? `No unassigned ${sportLabel} players available in the pool.`
+                        : 'No players match your search.'}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {filteredPlayers.map(p => {
+                        const isSelected = selectedPlayerId === p._id;
+                        return (
+                          <div
+                            key={p._id}
+                            onClick={() => {
+                              setSelectedPlayerId(p._id);
+                              setCustomPrice(p.basePrice !== undefined ? String(p.basePrice) : '20');
+                            }}
+                            className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all ${
+                              isSelected
+                                ? 'bg-[#0d3a24]/10 border-[#0d3a24] ring-1 ring-[#0d3a24]'
+                                : 'bg-white border-[#e8e2d5] hover:border-[#0d3a24]/40 hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {p.photo ? (
+                                <div className="relative w-8 h-8 rounded-lg border border-[#e8e2d5] overflow-hidden bg-[#faf8f5] shrink-0">
+                                  <Image src={p.photo} alt={p.name} fill unoptimized className="object-cover" />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg border border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-center shrink-0 text-xs font-bold text-[#0d3a24]">
+                                  {p.name?.[0] || 'P'}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-[#111827] truncate">{p.name}</h4>
+                                <div className="flex gap-1 mt-0.5">
+                                  {displaySkills(p.skills || []).slice(0, 2).map(s => <SkillBadge key={s} skill={s} />)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-black text-[#0d3a24] tabular-nums block">
+                                Base: {p.basePrice || 20} pts
+                              </span>
+                              <span className={`text-[10px] font-bold block ${isSelected ? 'text-[#0d3a24]' : 'text-[#9ca3af]'}`}>
+                                {isSelected ? 'Selected ✓' : 'Click to select'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Player Details & Points Assignment */}
+                {selectedPlayer && (
+                  <div className="shrink-0 bg-white border border-[#e8e2d5] rounded-2xl p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#4b5563]">
+                        Assignment Points / Cost
+                      </span>
+                      <span className="text-xs text-[#6b7280]">
+                        Base Price: <strong className="text-[#111827]">{selectedPlayer.basePrice || 20} pts</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          min="0"
+                          value={customPrice}
+                          onChange={e => setCustomPrice(e.target.value)}
+                          placeholder={String(selectedPlayer.basePrice || 20)}
+                          className={`w-full bg-[#faf8f5] border rounded-xl px-3.5 py-2 text-sm font-bold tabular-nums text-[#111827] focus:outline-none focus:bg-white transition-all ${
+                            isBudgetExceeded ? 'border-red-400 focus:border-red-500' : 'border-[#e8e2d5] focus:border-[#0d3a24]'
+                          }`}
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-bold text-[#9ca3af]">pts</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomPrice(String(selectedPlayer.basePrice || 20))}
+                        className="px-2.5 py-2 text-xs font-bold rounded-xl border border-[#e8e2d5] bg-white hover:bg-stone-50 text-[#4b5563]"
+                        title="Reset to Base Price"
+                      >
+                        Base
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomPrice(prev => String(Math.max(0, (Number(prev) || selectedPlayer.basePrice || 20) + 5)))}
+                        className="px-2.5 py-2 text-xs font-bold rounded-xl border border-[#e8e2d5] bg-white hover:bg-stone-50 text-[#0d3a24]"
+                      >
+                        +5
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomPrice(prev => String(Math.max(0, (Number(prev) || selectedPlayer.basePrice || 20) + 10)))}
+                        className="px-2.5 py-2 text-xs font-bold rounded-xl border border-[#e8e2d5] bg-white hover:bg-stone-50 text-[#0d3a24]"
+                      >
+                        +10
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomPrice(prev => String(Math.max(0, (Number(prev) || selectedPlayer.basePrice || 20) + 25)))}
+                        className="px-2.5 py-2 text-xs font-bold rounded-xl border border-[#e8e2d5] bg-white hover:bg-stone-50 text-[#0d3a24]"
+                      >
+                        +25
+                      </button>
+                    </div>
+
+                    {/* Purse summary */}
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
+                      <span className="text-[#6b7280]">
+                        Purse after deduction:
+                      </span>
+                      <span className={`font-black tabular-nums ${isBudgetExceeded ? 'text-red-600' : 'text-[#0d3a24]'}`}>
+                        {remainingBudget} pts
+                        {isBudgetExceeded && ' (Insufficient!)'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#e8e2d5] shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAddPlayerModalTeam(null)}
+                    disabled={submittingAddPlayer}
+                    className="px-4 py-2.5 text-xs font-bold text-[#6b7280] hover:text-[#111827] bg-[#faf8f5] hover:bg-stone-200 rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!selectedPlayerId || isBudgetExceeded || submittingAddPlayer}
+                    className="px-5 py-2.5 text-xs font-bold text-white bg-[#0d3a24] hover:bg-[#154d32] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                  >
+                    {submittingAddPlayer ? (
+                      <>
+                        <Spinner size="sm" /> Adding Player...
+                      </>
+                    ) : (
+                      <>
+                        <span>+</span> Add Player ({priceNum} pts)
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         );
       })()}
 
