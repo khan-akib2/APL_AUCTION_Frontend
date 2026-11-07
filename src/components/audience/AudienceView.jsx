@@ -565,7 +565,7 @@ export default function AudienceView({ initialSport = 'cricket' }) {
                 <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col min-h-[350px] sm:min-h-[420px] lg:h-full overflow-hidden">
                   {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                     <div className="flex-1 h-full min-h-0 overflow-hidden relative">
-                      <MysteryPlayerCard player={activePlayer} revealTokens={null} />
+                      <MysteryPlayerCard player={activePlayer} />
                       <BigCountdownOverlay remaining={timer.remaining} paused={timer.paused} />
                     </div>
                   ) : (

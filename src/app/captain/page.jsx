@@ -61,8 +61,6 @@ export default function CaptainDashboard() {
   const [viewerCount, setViewerCount] = useState(0);
   const [timer, setTimer] = useState({ remaining: null, paused: false });
   // Mystery state
-  const [revealing, setRevealing] = useState(false);
-  const [revealedPlayerIds, setRevealedPlayerIds] = useState(new Set());
   const [revealOverlayPlayer, setRevealOverlayPlayer] = useState(null);
   const [finalizingState, setFinalizingState] = useState(null);
   const [finalizingCountdown, setFinalizingCountdown] = useState(0);
@@ -643,12 +641,6 @@ export default function CaptainDashboard() {
       setSoldAnnouncement(null);
       loadData();
     });
-    socket.on("team:token_added", (d) => {
-      if (d.teamId === team?._id)
-        setTeam((prev) =>
-          prev ? { ...prev, revealTokens: d.revealTokens } : prev,
-        );
-    });
     socket.on("captain:locked", handleCaptainLocked);
     socket.on("captain:unlocked", handleCaptainUnlocked);
 
@@ -663,7 +655,6 @@ export default function CaptainDashboard() {
       socket.off("auctionFinalized", handleFinalized);
       socket.off("auction:resale");
       socket.off("teams:reset");
-      socket.off("team:token_added");
       socket.off("captain:locked", handleCaptainLocked);
       socket.off("captain:unlocked", handleCaptainUnlocked);
     };
@@ -751,31 +742,6 @@ export default function CaptainDashboard() {
     } finally {
       setBidding(false);
       isBiddingRef.current = false;
-    }
-  };
-
-  const handleReveal = async () => {
-    if (!activePlayer || revealing || isLocked) return;
-    setRevealing(true);
-    let res = await request(`/api/players/${activePlayer._id}/reveal`, {
-      method: "POST",
-      body: JSON.stringify({ teamId: team._id }),
-    });
-    if (res?.error && res?.status === 404) {
-      res = await request("/api/auction/reveal", {
-        method: "POST",
-        body: JSON.stringify({ playerId: activePlayer._id, teamId: team._id }),
-      });
-    }
-    setRevealing(false);
-    if (res?.error) toast(res.error, "error");
-    else if (res?.player) {
-      setActivePlayer(res.player);
-      setRevealedPlayerIds((prev) => new Set([...prev, activePlayer._id]));
-      setTeam((prev) =>
-        prev ? { ...prev, revealTokens: res.tokensLeft } : prev,
-      );
-      toast("Mystery player revealed for your team!", "success");
     }
   };
 
@@ -1203,13 +1169,7 @@ export default function CaptainDashboard() {
             <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col overflow-hidden min-h-87.5 sm:min-h-105 lg:h-full lg:min-h-0">
               {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                 <div className="h-full min-h-0 flex-1 relative">
-                  <MysteryPlayerCard
-                    player={activePlayer}
-                    revealTokens={team?.revealTokens ?? 0}
-                    onReveal={handleReveal}
-                    revealing={revealing}
-                    revealed={revealedPlayerIds.has(activePlayer._id)}
-                  />
+                  <MysteryPlayerCard player={activePlayer} />
                   <BigCountdownOverlay
                     remaining={timer.remaining}
                     paused={timer.paused}
