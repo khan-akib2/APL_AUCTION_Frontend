@@ -68,6 +68,8 @@ export default function CaptainDashboard() {
   const [lastSold, setLastSold] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [resellTarget, setResellTarget] = useState(null);
+  const [reselling, setReselling] = useState(false);
   const [isLocked, setIsLocked] = useState(() => {
     if (typeof window !== "undefined") {
       return Boolean(
@@ -753,6 +755,32 @@ export default function CaptainDashboard() {
     }
   };
 
+  const handleResellPlayer = async () => {
+    if (!resellTarget || reselling) return;
+    setReselling(true);
+    const res = await request("/api/teams/resell-player", {
+      method: "POST",
+      body: JSON.stringify({
+        playerId: resellTarget._id,
+        teamId: team?._id,
+      }),
+    });
+    setReselling(false);
+    if (res?.error) {
+      toast(res.error, "error");
+    } else {
+      toast(
+        `✅ ${resellTarget.name} resold to pool! +${res.refund} pts added to purse`,
+        "success",
+      );
+      setResellTarget(null);
+      loadData();
+    }
+  };
+
+  const highestPrice =
+    mySquad.length > 0 ? Math.max(...mySquad.map((p) => p.soldPrice || 0)) : 0;
+
   if (!mounted || loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8f6f0]">
@@ -1042,11 +1070,12 @@ export default function CaptainDashboard() {
 
       {/* Main Bidding Arena */}
       <div className="p-3 sm:p-4 lg:p-6 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:h-[calc(100vh-64px)]">
-        {activeSession && activePlayer ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-1 gap-4 min-h-0 lg:h-full">
-            {/* LEFT: Bid Controls & History (Order 2 on mobile, Order 1 on desktop) */}
-            <div className="order-2 lg:order-1 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full min-h-0">
-              {/* Bid Control Box */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-1 gap-4 min-h-0 lg:h-full">
+          {/* LEFT: Bid Controls & History (Order 2 on mobile, Order 1 on desktop) */}
+          <div className="order-2 lg:order-1 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full min-h-0">
+            {activeSession && activePlayer ? (
+              <>
+                {/* Bid Control Box */}
               <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm shrink-0">
                 <div className="px-5 py-4 border-b border-[#e8e2d5] bg-[#faf8f5] flex items-center justify-between">
                   <div>
@@ -1171,11 +1200,72 @@ export default function CaptainDashboard() {
                   ))}
                 </div>
               </div>
-            </div>
+            </>
+          ) : (
+            <>
+              {/* Standby Status Box */}
+              <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 shadow-sm shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#6b7280]">
+                    Auction Status
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#f4efe6] text-[#0d3a24] border border-[#e8e2d5]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    Standby
+                  </span>
+                </div>
+                <p className="text-[#111827] text-sm font-bold mb-1">
+                  Waiting for next player
+                </p>
+                <p className="text-[#6b7280] text-xs leading-relaxed">
+                  The auctioneer will place the next candidate on the stage shortly. Your purse and squad remain active.
+                </p>
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                  <span className="text-[#6b7280]">Available Purse:</span>
+                  <span className="font-bold text-[#0d3a24]">{team?.budget ?? 0} pts</span>
+                </div>
+              </div>
 
-            {/* CENTER: Player Card (Order 1 on mobile, Order 2 on desktop) */}
-            <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col overflow-hidden min-h-87.5 sm:min-h-105 lg:h-full lg:min-h-0">
-              {activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
+              {/* Standby Recent Activity Box */}
+              <div className="bg-white border border-[#e8e2d5] rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1 max-h-65 sm:max-h-75">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#e8e2d5] bg-[#faf8f5] shrink-0">
+                  <p className="text-[#111827] text-xs font-bold uppercase tracking-wider">
+                    Recent Activity
+                  </p>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#f4efe6] text-[#0d3a24]">
+                    {bidHistory.length}
+                  </span>
+                </div>
+                <div className="overflow-y-auto divide-y divide-gray-100 flex-1 min-h-0 p-2 max-h-50 sm:max-h-60">
+                  {bidHistory.length === 0 ? (
+                    <p className="text-[#9ca3af] text-xs text-center py-6">
+                      No live bids in progress
+                    </p>
+                  ) : (
+                    bidHistory.map((b, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-amber-50 text-[#111827] font-semibold" : "text-[#4b5563]"}`}
+                      >
+                        <span className="text-xs truncate">{b.teamName}</span>
+                        <span
+                          className={`text-xs font-black tabular-nums ml-2 ${i === 0 ? "text-[#c59b27]" : "text-[#0d3a24]"}`}
+                        >
+                          {b.amount} pts
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* CENTER: Player Card (Order 1 on mobile, Order 2 on desktop) */}
+        <div className="order-1 lg:order-2 lg:col-span-6 flex flex-col overflow-hidden min-h-87.5 sm:min-h-105 lg:h-full lg:min-h-0">
+          {activeSession && activePlayer ? (
+            activePlayer.isMysteryPlayer && activePlayer._isMasked ? (
                 <div className="h-full min-h-0 flex-1 relative">
                   <MysteryPlayerCard player={activePlayer} />
                   <BigCountdownOverlay
@@ -1263,107 +1353,218 @@ export default function CaptainDashboard() {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              )
+            ) : (
+              /* Standby Center Stage */
+              <div className="h-full bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-6 sm:p-10 text-center shadow-sm overflow-y-auto min-h-0">
+                <div className="w-16 h-16 rounded-full bg-[#f4efe6] border border-[#e8e2d5] flex items-center justify-center mb-3 shadow-inner shrink-0">
+                  <Logo size="sm" className="opacity-70" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#111827] mb-1.5">
+                  Standing By For Next Player
+                </h2>
+                <p className="text-[#6b7280] text-xs sm:text-sm max-w-sm mb-3">
+                  The auctioneer will place the next player on the bidding block soon.
+                </p>
 
-            {/* RIGHT: Budget + Squad (Order 3 on mobile and desktop) */}
-            <div className="order-3 lg:order-3 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full min-h-0">
-              {/* Budget Card */}
-              <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 shadow-sm shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs uppercase tracking-wider font-bold text-[#6b7280]">
-                    Purse Overview
-                  </p>
-                  <p className="font-black text-lg tabular-nums text-[#0d3a24]">
-                    {team?.budget}{" "}
-                    <span className="text-[#6b7280] text-xs font-normal">
-                      pts left
-                    </span>
-                  </p>
-                </div>
-                <div className="h-1.5 bg-[#f4efe6] rounded-full overflow-hidden mb-2">
-                  <div
-                    className="h-full rounded-full transition-all duration-700 bg-[#0d3a24]"
-                    style={{ width: `${budgetPct}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-[#6b7280]">
-                  <span>Spent: {team?.pointsSpent || 0} pts</span>
-                  <span>{budgetPct}% spent</span>
+                {lastSold && (
+                  <div className="w-full max-w-md my-2 text-left">
+                    <LastSoldCard lastSold={lastSold} />
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                  <span>
+                    Anti-cheat active: Tab switching and Inspect element are locked until the auction ends.
+                  </span>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Squad Card */}
-              <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 flex-1 flex flex-col shadow-sm min-h-0">
-                <p className="text-[#111827] text-xs uppercase tracking-wider font-bold mb-3 shrink-0">
+          {/* RIGHT: Budget + Squad (Order 3 on mobile and desktop) — ALWAYS VISIBLE! */}
+          <div className="order-3 lg:order-3 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full min-h-0">
+            {/* Budget Card */}
+            <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 shadow-sm shrink-0">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs uppercase tracking-wider font-bold text-[#6b7280]">
+                  Purse Overview
+                </p>
+                <p className="font-black text-lg tabular-nums text-[#0d3a24]">
+                  {team?.budget}{" "}
+                  <span className="text-[#6b7280] text-xs font-normal">
+                    pts left
+                  </span>
+                </p>
+              </div>
+              <div className="h-1.5 bg-[#f4efe6] rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full transition-all duration-700 bg-[#0d3a24]"
+                  style={{ width: `${budgetPct}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-[#6b7280]">
+                <span>Spent: {team?.pointsSpent || 0} pts</span>
+                <span>{budgetPct}% spent</span>
+              </div>
+            </div>
+
+            {/* Squad Card — with Reselling support for Highest-Priced Player */}
+            <div className="bg-white border border-[#e8e2d5] rounded-3xl p-5 flex-1 flex flex-col shadow-sm min-h-0">
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <p className="text-[#111827] text-xs uppercase tracking-wider font-bold">
                   My Squad · {mySquad.length}/{team?.teamSize || 7}
                 </p>
-                <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
-                  {mySquad.map((p) => (
+                {highestPrice > 0 && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Max: {highestPrice} pts
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
+                {mySquad.map((p) => {
+                  const isHighest =
+                    (p.soldPrice || 0) === highestPrice && highestPrice > 0;
+                  return (
                     <div
                       key={p._id}
-                      className="flex items-center justify-between py-2 px-3 rounded-2xl bg-[#faf8f5] border border-[#e8e2d5] shadow-sm"
+                      className={`flex items-center justify-between py-2 px-3 rounded-2xl border shadow-sm transition-all ${
+                        isHighest
+                          ? "bg-amber-50/70 border-amber-300"
+                          : "bg-[#faf8f5] border-[#e8e2d5]"
+                      }`}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-[#111827] text-xs font-semibold truncate">
-                          {p.name}
-                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[#111827] text-xs font-semibold truncate">
+                            {p.name}
+                          </p>
+                          {isHighest && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 border border-amber-300">
+                              Highest
+                            </span>
+                          )}
+                        </div>
                         <div className="flex gap-1 mt-0.5">
                           {p.skills?.slice(0, 1).map((s) => (
                             <SkillBadge key={s} skill={s} />
                           ))}
                         </div>
                       </div>
-                      <span className="text-[#c59b27] text-xs font-bold ml-2 shrink-0">
-                        {p.soldPrice} pts
-                      </span>
+                      <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                        <span className="text-[#c59b27] text-xs font-bold">
+                          {p.soldPrice} pts
+                        </span>
+                        {isHighest && (
+                          <button
+                            type="button"
+                            onClick={() => setResellTarget(p)}
+                            className="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white shadow-2xs transition-colors cursor-pointer"
+                            title={`Resell ${p.name} to pool (50% refund: +${Math.floor(p.soldPrice / 2)} pts)`}
+                          >
+                            Resell
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  {Array.from({
-                    length: Math.max(0, (team?.teamSize || 7) - mySquad.length),
-                  }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="py-2.5 px-3 rounded-2xl border border-dashed border-[#e8e2d5] bg-white"
-                    >
-                      <p className="text-[#9ca3af] text-xs text-center font-medium">
-                        Empty Slot {mySquad.length + i + 1}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                  );
+                })}
+                {Array.from({
+                  length: Math.max(0, (team?.teamSize || 7) - mySquad.length),
+                }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="py-2.5 px-3 rounded-2xl border border-dashed border-[#e8e2d5] bg-white"
+                  >
+                    <p className="text-[#9ca3af] text-xs text-center font-medium">
+                      Empty Slot {mySquad.length + i + 1}
+                    </p>
+                  </div>
+                ))}
               </div>
+
+              {/* Quick action button for reselling highest player */}
+              {highestPrice > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const highestP = mySquad.find(
+                      (p) => (p.soldPrice || 0) === highestPrice,
+                    );
+                    if (highestP) setResellTarget(highestP);
+                  }}
+                  className="w-full mt-3 text-xs font-bold py-2 px-3 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 transition-all flex items-center justify-between shadow-2xs cursor-pointer shrink-0"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span>🔄</span>
+                    <span>Resell Highest Player</span>
+                  </span>
+                  <span className="text-[11px] font-black text-amber-900 tabular-nums">
+                    +{Math.floor(highestPrice / 2)} pts (50% penalty)
+                  </span>
+                </button>
+              )}
             </div>
           </div>
-        ) : (
-          <div className="h-full bg-white border border-[#e8e2d5] rounded-3xl flex flex-col items-center justify-center p-8 sm:p-12 text-center shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-[#f4efe6] border border-[#e8e2d5] flex items-center justify-center mb-4 shadow-inner">
-              <Logo size="sm" className="opacity-70" />
+        </div>
+      </div>
+
+      {/* Resell Confirmation Modal */}
+      {resellTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-gray-100">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+              🔄
             </div>
-            <h2 className="text-2xl font-bold font-serif text-[#111827] mb-2">
-              Standing By For Next Player
-            </h2>
-            <p className="text-[#6b7280] text-sm max-w-sm">
-              The auctioneer will place the next player on the bidding block
-              soon.
+            <h3 className="text-lg font-bold font-serif text-[#111827] text-center mb-1">
+              Resell to Pool?
+            </h3>
+            <p className="text-xs text-[#6b7280] text-center mb-4">
+              Resell your highest-priced squad member to recover points for the rest of your squad.
             </p>
 
-            {lastSold && (
-              <div className="w-full max-w-md my-4 text-left">
-                <LastSoldCard lastSold={lastSold} />
+            <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-2xl p-4 space-y-2 text-xs mb-5">
+              <div className="flex justify-between items-center font-semibold">
+                <span className="text-[#6b7280]">Player:</span>
+                <span className="text-[#111827] font-bold">{resellTarget.name}</span>
               </div>
-            )}
+              <div className="flex justify-between items-center">
+                <span className="text-[#6b7280]">Original Purchase:</span>
+                <span className="text-[#111827] font-bold">{resellTarget.soldPrice} pts</span>
+              </div>
+              <div className="flex justify-between items-center text-red-600 font-medium">
+                <span>50% Penalty Deduction:</span>
+                <span>-{resellTarget.soldPrice - Math.floor(resellTarget.soldPrice / 2)} pts</span>
+              </div>
+              <div className="pt-2 border-t border-[#e8e2d5] flex justify-between items-center font-black text-sm text-[#0d3a24]">
+                <span>Refunded to Purse:</span>
+                <span>+{Math.floor(resellTarget.soldPrice / 2)} pts</span>
+              </div>
+            </div>
 
-            <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-              <span>
-                Anti-cheat active: Tab switching and Inspect element are locked
-                until the auction ends.
-              </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={reselling}
+                onClick={() => setResellTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#e8e2d5] text-xs font-semibold hover:bg-stone-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={reselling}
+                onClick={handleResellPlayer}
+                className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {reselling ? <Spinner size="sm" /> : `Confirm Resell (+${Math.floor(resellTarget.soldPrice / 2)} pts)`}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Sold celebration overlay */}
       {soldAnnouncement && (

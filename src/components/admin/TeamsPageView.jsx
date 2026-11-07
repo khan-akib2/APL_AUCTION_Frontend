@@ -326,7 +326,7 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const handleRemovePlayer = (teamId, playerId, playerName, refundAmt) => {
     setConfirmModal({
       title: 'Remove Player',
-      message: `Remove ${playerName} from team? They will go back to the resold queue and ${refundAmt} pts will be refunded.`,
+      message: `Remove ${playerName} from team? They will go back to the resold queue with a 50% penalty (${Math.floor(refundAmt / 2)} pts refunded, ${refundAmt - Math.floor(refundAmt / 2)} pts deducted).`,
       confirmText: 'Remove',
       onConfirm: async () => {
         setConfirmModal(null);
