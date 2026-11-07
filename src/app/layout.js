@@ -55,6 +55,23 @@ export default function RootLayout({ children }) {
               });
               observer.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['bis_skin_checked'] });
             } catch (_) {}
+
+            // 3. Auto-recover from stale Next.js deployment chunks (404 ChunkLoadError)
+            window.addEventListener('error', function(e) {
+              var isChunkScript = e && e.target && e.target.tagName === 'SCRIPT' && e.target.src && e.target.src.indexOf('/_next/static/chunks/') !== -1;
+              var isChunkMsg = e && e.message && (
+                e.message.indexOf('Loading chunk') !== -1 ||
+                e.message.indexOf('ChunkLoadError') !== -1 ||
+                e.message.indexOf('Refused to execute script') !== -1
+              );
+              if (isChunkScript || isChunkMsg) {
+                var chunkKey = 'apl_chunk_retry_' + (e.target ? e.target.src : 'err');
+                if (!sessionStorage.getItem(chunkKey)) {
+                  sessionStorage.setItem(chunkKey, '1');
+                  window.location.reload();
+                }
+              }
+            }, true);
           `}
         </Script>
         <div className="relative z-10 min-h-full" suppressHydrationWarning>
