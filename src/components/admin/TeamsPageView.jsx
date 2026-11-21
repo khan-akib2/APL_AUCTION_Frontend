@@ -170,6 +170,13 @@ export default function TeamsPageView({ sport = 'cricket' }) {
   const [newCapPass, setNewCapPass] = useState('');
   const [creatingCap, setCreatingCap] = useState(false);
 
+  // Change Captain Password modal state
+  const [passwordModalCaptain, setPasswordModalCaptain] = useState(null);
+  const [newCaptainPassword, setNewCaptainPassword] = useState('');
+  const [sendPasswordEmail, setSendPasswordEmail] = useState(true);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showPasswordText, setShowPasswordText] = useState(false);
+
   const isFootball = sport === 'football';
   const sportLabel = isFootball ? 'Football' : 'Cricket';
 
@@ -268,6 +275,52 @@ export default function TeamsPageView({ sport = 'cricket' }) {
       setNewCapName('');
       setNewCapEmail('');
       setNewCapPass('');
+    }
+  };
+
+  const generateRandomPassword = () => {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let res = '';
+    for (let i = 0; i < 8; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewCaptainPassword(res);
+    setShowPasswordText(true);
+  };
+
+  const handleChangeCaptainPassword = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!passwordModalCaptain || !newCaptainPassword.trim() || changingPassword) return;
+
+    if (newCaptainPassword.trim().length < 4) {
+      return toast('Password must be at least 4 characters', 'warning');
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await request(`/api/users/${passwordModalCaptain._id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          password: newCaptainPassword.trim(),
+          sendEmail: sendPasswordEmail,
+          teamName: passwordModalCaptain.teamName || '',
+        }),
+      });
+
+      if (res?.error) {
+        toast(res.error, 'error');
+      } else {
+        toast(
+          `Password updated for ${passwordModalCaptain.name}!${sendPasswordEmail ? ' Login details sent to their email.' : ''}`,
+          'success'
+        );
+        setPasswordModalCaptain(null);
+        setNewCaptainPassword('');
+      }
+    } catch {
+      toast('Failed to update password', 'error');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -680,14 +733,37 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                       {sportLabel}
                     </span>
                   </div>
-                  <p className="text-xs text-[#6b7280]">
-                    Captain:{' '}
-                    {detailTeam.captainId?.name ? (
-                      <strong className="text-[#111827] font-semibold">{detailTeam.captainId.name} ({detailTeam.captainId.email})</strong>
-                    ) : (
-                      <span className="italic text-[#9ca3af]">No captain assigned</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xs text-[#6b7280]">
+                      Captain:{' '}
+                      {detailTeam.captainId?.name ? (
+                        <strong className="text-[#111827] font-semibold">{detailTeam.captainId.name} ({detailTeam.captainId.email})</strong>
+                      ) : (
+                        <span className="italic text-[#9ca3af]">No captain assigned</span>
+                      )}
+                    </p>
+                    {detailTeam.captainId?.name && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPasswordModalCaptain({
+                            _id: detailTeam.captainId._id || detailTeam.captainId,
+                            name: detailTeam.captainId.name,
+                            email: detailTeam.captainId.email,
+                            teamName: detailTeam.name,
+                          });
+                          setNewCaptainPassword('');
+                          setSendPasswordEmail(true);
+                          setShowPasswordText(false);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0d3a24] hover:text-[#154d32] bg-[#0d3a24]/10 hover:bg-[#0d3a24]/20 border border-[#0d3a24]/25 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                        title="Change captain login password"
+                      >
+                        <span>🔑</span>
+                        <span>Change Password</span>
+                      </button>
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
               <button
@@ -1123,13 +1199,35 @@ export default function TeamsPageView({ sport = 'cricket' }) {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-[#4b5563] block">Assign Captain</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCaptainModal(true)}
-                    className="text-xs text-[#0d3a24] hover:underline flex items-center gap-1 font-bold"
-                  >
-                    + New {sportLabel} Captain
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {form.captainId && captains.find(c => c._id === form.captainId) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cap = captains.find(c => c._id === form.captainId);
+                          setPasswordModalCaptain({
+                            _id: cap._id,
+                            name: cap.name,
+                            email: cap.email,
+                            teamName: form.name,
+                          });
+                          setNewCaptainPassword('');
+                          setSendPasswordEmail(true);
+                          setShowPasswordText(false);
+                        }}
+                        className="text-xs text-[#0d3a24] hover:underline font-bold flex items-center gap-1"
+                      >
+                        🔑 Change Password
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowCaptainModal(true)}
+                      className="text-xs text-[#0d3a24] hover:underline flex items-center gap-1 font-bold"
+                    >
+                      + New {sportLabel} Captain
+                    </button>
+                  </div>
                 </div>
                 <CaptainSelect
                   captains={captains}
@@ -1201,6 +1299,102 @@ export default function TeamsPageView({ sport = 'cricket' }) {
                 {saving ? <Spinner size="sm" /> : 'Save Team'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Captain Password Modal */}
+      {passwordModalCaptain && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl border border-gray-100 flex flex-col">
+            <div className="flex items-start justify-between pb-3 border-b border-[#e8e2d5] shrink-0">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#0d3a24]" />
+                  <h2 className="text-lg font-bold font-serif text-[#111827]">
+                    Change Captain Password
+                  </h2>
+                </div>
+                <p className="text-xs text-[#6b7280] mt-0.5">
+                  Captain: <strong className="text-[#111827]">{passwordModalCaptain.name}</strong> ({passwordModalCaptain.email})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordModalCaptain(null)}
+                className="w-8 h-8 rounded-full bg-[#faf8f5] hover:bg-stone-200 text-[#6b7280] flex items-center justify-center text-sm font-bold transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleChangeCaptainPassword} className="pt-4 space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-[#4b5563] block">New Password *</label>
+                  <button
+                    type="button"
+                    onClick={generateRandomPassword}
+                    className="text-xs text-[#0d3a24] hover:underline font-bold flex items-center gap-1"
+                  >
+                    🎲 Generate Random
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={newCaptainPassword}
+                    onChange={e => setNewCaptainPassword(e.target.value)}
+                    placeholder="Enter new password (min. 4 chars)"
+                    className="w-full bg-[#faf8f5] border border-[#e8e2d5] rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#111827] focus:outline-none focus:border-[#0d3a24] focus:bg-white transition-all pr-16"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    className="absolute right-3 top-2.5 text-xs text-[#6b7280] hover:text-[#111827] font-semibold"
+                  >
+                    {showPasswordText ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-[#faf8f5] border border-[#e8e2d5] rounded-xl p-3 flex items-start gap-2.5">
+                <input
+                  id="sendEmailCheck"
+                  type="checkbox"
+                  checked={sendPasswordEmail}
+                  onChange={e => setSendPasswordEmail(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-[#0d3a24] rounded border-[#e8e2d5] focus:ring-[#0d3a24]"
+                />
+                <label htmlFor="sendEmailCheck" className="text-xs text-[#4b5563] cursor-pointer">
+                  Send new login credentials to <strong className="text-[#111827]">{passwordModalCaptain.email}</strong> via email
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#e8e2d5]">
+                <button
+                  type="button"
+                  onClick={() => setPasswordModalCaptain(null)}
+                  disabled={changingPassword}
+                  className="px-4 py-2.5 text-xs font-bold text-[#6b7280] hover:text-[#111827] bg-[#faf8f5] hover:bg-stone-200 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newCaptainPassword.trim() || newCaptainPassword.trim().length < 4 || changingPassword}
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-[#0d3a24] hover:bg-[#154d32] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  {changingPassword ? (
+                    <>
+                      <Spinner size="sm" /> Updating...
+                    </>
+                  ) : (
+                    'Save New Password'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
