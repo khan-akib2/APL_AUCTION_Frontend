@@ -309,7 +309,6 @@ export default function AudienceView({ initialSport = 'cricket' }) {
       }
 
       setFinalizingState(null);
-      setFinalizingCountdown(0);
     };
 
     const handleTimer = (data) => {
