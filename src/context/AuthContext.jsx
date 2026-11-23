@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
@@ -48,14 +48,14 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const login = (tokenVal, userData) => {
+  const login = useCallback((tokenVal, userData) => {
     setToken(tokenVal);
     setUser(userData);
     storage?.setItem('token', tokenVal);
     storage?.setItem('user', JSON.stringify(userData));
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     const t = storage?.getItem('token');
     if (t) {
       try {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     storage?.removeItem('token');
     storage?.removeItem('user');
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, loading }}>

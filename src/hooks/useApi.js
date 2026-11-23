@@ -1,4 +1,5 @@
 'use client';
+import { useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
@@ -6,7 +7,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:400
 export function useApi() {
   const { token, logout } = useAuth();
 
-  const request = async (path, options = {}) => {
+  const request = useCallback(async (path, options = {}) => {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
     const url = `${BACKEND_URL}${normalizedPath}`;
 
@@ -33,7 +34,7 @@ export function useApi() {
       console.error(`API error on ${url}:`, err);
       return null;
     }
-  };
+  }, [token, logout]);
 
   return { request };
 }
