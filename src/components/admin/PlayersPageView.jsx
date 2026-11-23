@@ -262,17 +262,22 @@ export default function PlayersPageView({ sport = 'cricket' }) {
         };
       }).filter(p => p.name);
 
-      let success = 0;
-      for (const p of parsedPlayers) {
-        const res = await fetch(`${BACKEND_URL}/api/players`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(p),
-        });
-        if (res.ok) success++;
+      const res = await request('/api/players/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ players: parsedPlayers, sport }),
+      });
+
+      if (!res) {
+        // Handled by useApi (e.g. 401 session expired)
+        return;
       }
-      toast(`${success}/${parsedPlayers.length} ${sportLabel.toLowerCase()} players imported`, 'success');
-      load();
+
+      if (res.error) {
+        toast(res.error, 'error');
+      } else {
+        toast(`Successfully imported ${res.count || parsedPlayers.length} ${sportLabel.toLowerCase()} players`, 'success');
+        load();
+      }
     } catch {
       toast('CSV import failed', 'error');
     } finally {
@@ -360,7 +365,8 @@ export default function PlayersPageView({ sport = 'cricket' }) {
       ? await request(`/api/players/${editId}`, { method: 'PUT', body: JSON.stringify(payload) })
       : await request('/api/players', { method: 'POST', body: JSON.stringify(payload) });
     setSaving(false);
-    if (res?.error) { toast(res.error, 'error'); return; }
+    if (!res) return;
+    if (res.error) { toast(res.error, 'error'); return; }
     toast(editId ? 'Player updated' : 'Player added', 'success');
     setShowModal(false); setForm(emptyForm); setEditId(null);
     load();
@@ -368,14 +374,16 @@ export default function PlayersPageView({ sport = 'cricket' }) {
 
   const handleDelete = async (id) => {
     const res = await request(`/api/players/${id}`, { method: 'DELETE' });
-    if (res?.error) toast(res.error, 'error');
+    if (!res) return;
+    if (res.error) toast(res.error, 'error');
     else { toast('Player deleted', 'success'); load(); }
     setDeleteConfirm(null);
   };
 
   const handleDeleteAll = async () => {
     const res = await request(`/api/players/all?sport=${sport}`, { method: 'DELETE' });
-    if (res?.error) toast(res.error, 'error');
+    if (!res) return;
+    if (res.error) toast(res.error, 'error');
     else { toast(`All ${sportLabel.toLowerCase()} players deleted`, 'success'); load(); }
     setDeleteAllConfirm(false);
   };

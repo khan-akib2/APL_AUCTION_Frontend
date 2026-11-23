@@ -21,6 +21,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('expired') === '1') {
+          toast('Your session has expired. Please sign in again.', 'warning');
+        }
+      }
       const savedEmail = localStorage.getItem('apl_saved_email');
       if (savedEmail) {
         setEmail(savedEmail);
@@ -29,7 +35,7 @@ export default function LoginPage() {
     } catch {
       // ignore in incognito
     }
-  }, []);
+  }, [toast]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();

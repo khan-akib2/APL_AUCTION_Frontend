@@ -14,8 +14,36 @@ export function AuthProvider({ children }) {
     const t = storage?.getItem('token');
     const u = storage?.getItem('user');
     if (t && u) {
-      setToken(t);
-      setUser(JSON.parse(u));
+      try {
+        setToken(t);
+        setUser(JSON.parse(u));
+        // Verify token with backend
+        fetch(`${BACKEND_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${t}` },
+        })
+          .then(res => {
+            if (res.status === 401) {
+              setToken(null);
+              setUser(null);
+              storage?.removeItem('token');
+              storage?.removeItem('user');
+              if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                window.location.href = '/login?expired=1';
+              }
+            } else if (res.ok) {
+              res.json().then(data => {
+                if (data?.user) {
+                  setUser(data.user);
+                  storage?.setItem('user', JSON.stringify(data.user));
+                }
+              }).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      } catch {
+        storage?.removeItem('token');
+        storage?.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
